@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rowing Simulator</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>🚣 Rowing Simulator</h1>
+  <div class="controls">
+    <button id="startBtn" class="btn btn-start">▶ Start Race</button>
+    <button id="stopBtn" class="btn btn-stop" disabled>⏸ Pause</button>
+    <button id="resetBtn" class="btn btn-reset">⟲ Reset</button>
+    <span id="raceStatus" class="race-status">Ready</span>
+  </div>
+</header>
+
+<main class="grid">
+
+  <!-- Panel: List of Rowers -->
+  <section class="panel" id="panel-roster">
+    <h2>Rowers</h2>
+    <div class="panel-sub">Drag a rower into a boat seat</div>
+    <ul id="rowerList" class="rower-list dropzone" data-zone="roster"></ul>
+  </section>
+
+  <!-- Panel: Boat 1 -->
+  <section class="panel" id="panel-boat1">
+    <h2><span class="boat-dot dot-1"></span>Boat 1</h2>
+    <div class="panel-sub" id="boat1Meta">0 / 8 seats filled</div>
+    <ul class="seat-list dropzone" id="boat1Seats" data-zone="boat1"></ul>
+  </section>
+
+  <!-- Panel: Boat 2 -->
+  <section class="panel" id="panel-boat2">
+    <h2><span class="boat-dot dot-2"></span>Boat 2</h2>
+    <div class="panel-sub" id="boat2Meta">0 / 8 seats filled</div>
+    <ul class="seat-list dropzone" id="boat2Seats" data-zone="boat2"></ul>
+  </section>
+
+  <!-- Panel: Race Course -->
+  <section class="panel panel-wide" id="panel-course">
+    <h2>Race Course <span class="panel-sub inline">1500 m</span></h2>
+    <div class="course" id="course">
+      <div class="course-lane" id="lane1">
+        <div class="lane-label">Boat 1</div>
+        <div class="lane-track">
+          <div class="boat-marker boat-marker-1" id="marker1"></div>
+        </div>
+      </div>
+      <div class="course-lane" id="lane2">
+        <div class="lane-label">Boat 2</div>
+        <div class="lane-track">
+          <div class="boat-marker boat-marker-2" id="marker2"></div>
+        </div>
+      </div>
+      <div class="finish-line">
+        <span>FINISH</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Panel: Telemetry -->
+  <section class="panel panel-wide" id="panel-telemetry">
+    <h2>Telemetry</h2>
+    <div class="telemetry-grid">
+      <div class="telemetry-stats">
+        <table class="stat-table">
+          <thead>
+            <tr><th></th><th>Boat 1</th><th>Boat 2</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Time</td><td id="t1-time">0:00.0</td><td id="t2-time">0:00.0</td></tr>
+            <tr><td>Distance</td><td id="t1-dist">0 m</td><td id="t2-dist">0 m</td></tr>
+            <tr><td>Speed</td><td id="t1-speed">0.0 m/s</td><td id="t2-speed">0.0 m/s</td></tr>
+            <tr><td>Split /500m</td><td id="t1-split">--:--</td><td id="t2-split">--:--</td></tr>
+            <tr><td>Stroke Rate</td><td id="t1-rate">0 spm</td><td id="t2-rate">0 spm</td></tr>
+            <tr><td>Total Power</td><td id="t1-power">0 W</td><td id="t2-power">0 W</td></tr>
+            <tr><td>Crew Size</td><td id="t1-crew">0</td><td id="t2-crew">0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="telemetry-chart">
+        <canvas id="speedChart" height="180"></canvas>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="data/rowers.js"></script>
+<script src="app.js"></script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1f7e7d2580a250b',t:'MTc4NDc4MDU2Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
