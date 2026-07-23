@@ -84,9 +84,7 @@ const marker2 = document.getElementById("marker2");
 const lane1Track = document.querySelector("#lane1 .lane-track");
 const lane2Track = document.querySelector("#lane2 .lane-track");
 
-const RACE_DISTANCE = 300;
-const DISPLAY_SCALE = 5;
-const SIM_SPEED = 1;
+const SIM_SPEED = 2;
 
 // ---------- Animated boat SVG (hull + rowing oars) ----------
 // Builds a small top-down rowing shell (bow pointing right, in the direction
@@ -234,52 +232,77 @@ function showRowerHoverCard(rower, targetEl) {
   const weightText = rower.weight != null ? `${rower.weight} lbs` : "--";
   const rs = rarityStyle(rower.rarity);
 
-  const particleCfg = {
-    "Generational": { count: 50, sizes: [2, 14], anims: ["fire-rise","fire-drift","spark-burst","ember-float","lightning-flash","explosion","fire-whirl","trail-up"], glow: true, fire: true },
-    "Freak": { count: 30, sizes: [2, 10], anims: ["fire-drift","ember-float","spark-burst","fire-whirl","trail-up"], glow: true, fire: false },
-    "Pretty Good": { count: 18, sizes: [2, 7], anims: ["ember-float","fire-drift","spark-burst"], glow: false, fire: false },
-    "Mid": { count: 9, sizes: [2, 5], anims: ["ember-float","fire-drift"], glow: false, fire: false },
-    "Noob": { count: 4, sizes: [2, 4], anims: ["ember-float"], glow: false, fire: false },
+  const shapeFA = {
+    heart: "fa-heart",
+    star: "fa-star",
+    triangle: "fa-play",
+    square: "fa-square",
+    circle: "fa-circle",
   };
-  const cfg = particleCfg[rower.rarity] || { count: 0, sizes: [2, 3], anims: ["ember-float"], glow: false, fire: false };
+  const particleClip = {
+    triangle: "polygon(50% 0%, 0% 100%, 100% 100%)",
+    square: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
+    circle: "circle(50%)",
+  };
+  const particleCfg = {
+    "Generational": { count: 55, sizes: [5, 20], anims: ["hc-rise","hc-rise-drift","hc-rise-spin","hc-rise-pulse"], glow: true, shape: "heart", icon: true },
+    "Freak":        { count: 35, sizes: [4, 15], anims: ["hc-rise","hc-rise-drift","hc-rise-spin"], glow: true, shape: "star", icon: true },
+    "Pretty Good":  { count: 22, sizes: [3, 11], anims: ["hc-rise","hc-rise-drift","hc-rise-spin","hc-rise-pulse"], glow: false, shape: "mixed", icon: false },
+    "Mid":          { count: 12, sizes: [3, 8],  anims: ["hc-rise","hc-rise-drift"], glow: false, shape: "circle", icon: false },
+    "Noob":         { count: 5,  sizes: [3, 5],  anims: ["hc-rise"], glow: false, shape: "circle", icon: false },
+  };
+  const cfg = particleCfg[rower.rarity] || { count: 0, sizes: [3, 4], anims: ["hc-rise"], glow: false, shape: "circle", icon: false };
+
+  const genColors = ["#ff2020","#ff3333","#ff4444","#ff5555","#cc0000","#dd1111","#ee2222","#ff1111","#dd2222","#ff6666"];
 
   card.setAttribute("data-rarity", rower.rarity || "unknown");
   let particles = "";
-  const fireColors = ["#ff2020", "#ff3300", "#ff5500", "#ff8800", "#ffcc00", "#ffee44", "#ffffff", "#ff4400", "#ff6600", "#ffbb33", "#ff4444", "#ffcc66", "#ffaa00"];
   for (let i = 0; i < cfg.count; i++) {
     const size = cfg.sizes[0] + Math.random() * (cfg.sizes[1] - cfg.sizes[0]);
     const anim = cfg.anims[Math.floor(Math.random() * cfg.anims.length)];
-    const color = cfg.fire ? fireColors[Math.floor(Math.random() * fireColors.length)] : rs.color;
-    const shadow = cfg.glow ? `0 0 ${(6 + Math.random() * 18).toFixed(1)}px ${color}, 0 0 ${(15 + Math.random() * 30).toFixed(1)}px ${color}` : `0 0 ${(3 + Math.random() * 5).toFixed(1)}px ${color}`;
-    const blur = Math.random() > 0.5 ? `filter:blur(${(0.5 + Math.random() * 1.5).toFixed(1)}px);` : "";
-    const shapes = ["50%", "50%", "50%", "4px", "40% 60% 60% 40% / 60% 40% 60% 40%", "30% 70% 70% 30% / 30% 30% 70% 70%", "70% 30% 30% 70% / 70% 70% 30% 30%", "50% 20% 50% 20% / 20% 50% 20% 50%", "80% 20% 80% 20% / 20% 80% 20% 80%"];
-    const br = shapes[Math.floor(Math.random() * shapes.length)];
+    const color = rower.rarity === "Generational"
+      ? genColors[Math.floor(Math.random() * genColors.length)]
+      : rs.color;
+    const shadow = cfg.glow
+      ? `0 0 ${(8 + Math.random() * 24).toFixed(1)}px ${color}, 0 0 ${(20 + Math.random() * 40).toFixed(1)}px ${color}`
+      : `0 0 ${(3 + Math.random() * 6).toFixed(1)}px ${color}`;
+    let shape;
+    if (cfg.shape === "mixed") {
+      shape = Math.random() > 0.5 ? "triangle" : "square";
+    } else {
+      shape = cfg.shape;
+    }
     const l = (2 + Math.random() * 96).toFixed(1);
-    const t = (2 + Math.random() * 96).toFixed(1);
-    const ar = Math.random() > 0.6 ? (0.5 + Math.random() * 1.0).toFixed(2) : "1";
-    const w = size;
-    const h = size * parseFloat(ar);
-    const dur = (0.6 + Math.random() * 2.5).toFixed(1);
-    const delay = (Math.random() * 6).toFixed(1);
-    particles += `<span class="hc-particle" style="
-      left:${l}%;top:${t}%;
-      width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;
-      border-radius:${br};
-      animation:${anim} ${dur}s ease-in-out ${delay}s infinite;
-      background:${color};
-      box-shadow:${shadow};
-      ${blur}
-    "></span>`;
-  }
-  // lightning bolt for Generational
-  if (rower.rarity === "Generational") {
-    for (let i = 0; i < 3; i++) {
-      const l = 10 + i * 35;
-      particles += `<span class="hc-lightning" style="left:${l}%;animation-delay:${(i * 1.5).toFixed(1)}s"></span>`;
+    const t = (85 + Math.random() * 15).toFixed(1);
+    const dur = (3 + Math.random() * 5).toFixed(1);
+    const delay = (Math.random() * 10).toFixed(1);
+    const blur = Math.random() > 0.7 ? `filter:blur(${(0.5 + Math.random() * 1.2).toFixed(1)}px);` : "";
+    if (cfg.icon) {
+      const fa = shapeFA[shape] || "fa-circle";
+      particles += `<i class="hc-particle fa-solid ${fa}" style="
+        left:${l}%;top:${t}%;
+        font-size:${size.toFixed(1)}px;line-height:1;
+        animation:${anim} ${dur}s linear ${delay}s infinite;
+        color:${color};
+        text-shadow:${shadow};
+        ${blur}
+      "></i>`;
+    } else {
+      const clip = particleClip[shape] || "circle(50%)";
+      particles += `<span class="hc-particle" style="
+        left:${l}%;top:${t}%;
+        width:${size.toFixed(1)}px;height:${size.toFixed(1)}px;
+        clip-path:${clip};
+        animation:${anim} ${dur}s linear ${delay}s infinite;
+        background:${color};
+        box-shadow:${shadow};
+        ${blur}
+      "></span>`;
     }
   }
 
   card.innerHTML = `
+    <div class="hc-pattern"></div>
     <div class="hc-particles">${particles}</div>
     <div class="hc-top">
       <span class="hc-name">${rower.name}</span>
@@ -343,24 +366,24 @@ function positionHoverCardNear(targetEl) {
   const card = ensureHoverCard();
   const inBoat2 = targetEl.closest("#panel-boat2");
   if (inBoat2) {
-    card.style.left = `${Math.max(4, rect.left - card.offsetWidth - 10)}px`;
+    card.style.left = `${Math.max(4, rect.left + window.scrollX - card.offsetWidth - 10)}px`;
   } else {
-    card.style.left = `${rect.right + 10}px`;
+    card.style.left = `${rect.right + window.scrollX + 10}px`;
   }
-  card.style.top = `${rect.top}px`;
+  card.style.top = `${rect.top + window.scrollY}px`;
 }
 
 function positionHoverCardAtPointer(e) {
   const card = ensureHoverCard();
   const margin = 14;
-  let left = e.clientX + margin;
-  let top = e.clientY + margin;
+  let left = e.pageX + margin;
+  let top = e.pageY + margin;
   const cardRect = card.getBoundingClientRect();
-  if (left + cardRect.width > window.innerWidth) {
-    left = e.clientX - cardRect.width - margin;
+  if (left + cardRect.width > window.innerWidth + window.scrollX) {
+    left = e.pageX - cardRect.width - margin;
   }
-  if (top + cardRect.height > window.innerHeight) {
-    top = e.clientY - cardRect.height - margin;
+  if (top + cardRect.height > window.innerHeight + window.scrollY) {
+    top = e.pageY - cardRect.height - margin;
   }
   card.style.left = `${left}px`;
   card.style.top = `${top}px`;
@@ -412,14 +435,14 @@ function renderBoat(boatKey, containerEl, metaEl) {
     // drop handlers per-seat (allow swapping into a specific seat)
     slot.addEventListener("dragover", (e) => {
       e.preventDefault();
-      slot.closest(".dropzone").classList.add("dragover");
+      slot.classList.add("dragover");
     });
     slot.addEventListener("dragleave", () => {
-      slot.closest(".dropzone").classList.remove("dragover");
+      slot.classList.remove("dragover");
     });
     slot.addEventListener("drop", (e) => {
       e.preventDefault();
-      slot.closest(".dropzone").classList.remove("dragover");
+      slot.classList.remove("dragover");
       _justDropped = { boat: boatKey, seat: seatIndex };
       handleDrop(boatKey, seatIndex);
     });
@@ -440,7 +463,6 @@ function renderAll() {
   renderRosterList();
   renderBoat("boat1", boat1SeatsEl, boat1MetaEl);
   renderBoat("boat2", boat2SeatsEl, boat2MetaEl);
-  updateStaticTelemetry();
 }
 
 // ---------- Drag & drop ----------
@@ -450,6 +472,7 @@ let draggedRowerId = null;
 function onDragStart(e) {
   draggedRowerId = e.currentTarget.dataset.rowerId;
   e.currentTarget.classList.add("dragging");
+  hideRowerHoverCard();
   e.dataTransfer.effectAllowed = "move";
   e.dataTransfer.setData("text/plain", draggedRowerId);
 }
@@ -497,97 +520,32 @@ rowerListEl.addEventListener("drop", (e) => {
 
 // ---------- Telemetry (static, pre-race) ----------
 
-function crewPower(boatKey) {
-  return boats[boatKey]
-    .filter(Boolean)
-    .reduce((sum, id) => sum + findRower(id).power, 0);
-}
-
 function crewSize(boatKey) {
   return boats[boatKey].filter(Boolean).length;
 }
 
-function crewAvgStat(boatKey, stat) {
-  const rowers = boats[boatKey].map(id => findRower(id)).filter(Boolean);
-  if (rowers.length === 0) return 0;
-  return rowers.reduce((sum, r) => sum + (r[stat] || 0), 0) / rowers.length;
-}
+let speedChart1 = null;
+let speedChart2 = null;
 
-function boatTargetSpeed(boatKey) {
-  const power = crewPower(boatKey);
-  const size = crewSize(boatKey);
-  if (size === 0) return 0;
-
-  const avgMentality = crewAvgStat(boatKey, 'mentality');
-  const avgPort = crewAvgStat(boatKey, 'port');
-  const avgStarboard = crewAvgStat(boatKey, 'starboard');
-
-  const sideBalance = Math.min(avgPort, avgStarboard) / Math.max(avgPort, avgStarboard || 1);
-  const mentalityFactor = 0.7 + avgMentality * 0.1;
-  const balanceFactor = 0.9 + sideBalance * 0.1;
-  const fullBonus = size / SEATS_PER_BOAT;
-
-  return Math.cbrt(power / 60) * (0.65 + 0.35 * fullBonus) * mentalityFactor * balanceFactor;
-}
-
-function boatAccelFactor(boatKey) {
-  const avgMentality = crewAvgStat(boatKey, 'mentality');
-  return 0.3 + avgMentality * 0.2;
-}
-
-function boatStrokesPower(boatKey) {
-  return crewPower(boatKey);
-}
-
-function updateStaticTelemetry() {
-  document.getElementById("t1-crew").textContent = crewSize("boat1");
-  document.getElementById("t2-crew").textContent = crewSize("boat2");
-  if (!raceState.running) {
-    document.getElementById("t1-power").textContent = crewPower("boat1") + " W";
-    document.getElementById("t2-power").textContent = crewPower("boat2") + " W";
-  }
-}
-
-// ---------- Race Simulation ----------
-
-const raceState = {
-  running: false,
-  finished: false,
-  rafId: null,
-  lastFrameTime: null,
-  elapsed: 0,
-  realElapsed: 0,
-  boat1: { distance: 0, speed: 0, currentSpeed: 0, strokeRate: 0, strokePhase: 0, strokeCount: 0, finishTime: null, finishRealTime: null, strokePowers: [] },
-  boat2: { distance: 0, speed: 0, currentSpeed: 0, strokeRate: 0, strokePhase: 0, strokeCount: 0, finishTime: null, finishRealTime: null, strokePowers: [] },
-  lastTelemetryUpdate: 0,
-};
-
-let speedChart = null;
-
-function initChart() {
-  const ctx = document.getElementById("speedChart").getContext("2d");
-  speedChart = new Chart(ctx, {
-    type: "bar",
+function buildChart(canvasId, lineColor, fillColor) {
+  return new Chart(document.getElementById(canvasId).getContext("2d"), {
+    type: "line",
     data: {
-      labels: [],
-      datasets: [
-        {
-          label: "Boat 1 power (W)",
-          data: [],
-          backgroundColor: "rgba(63,182,255,0.7)",
-          borderColor: "#3fb6ff",
-          borderWidth: 1,
-          borderRadius: 2,
-        },
-        {
-          label: "Boat 2 power (W)",
-          data: [],
-          backgroundColor: "rgba(255,107,107,0.7)",
-          borderColor: "#ff6b6b",
-          borderWidth: 1,
-          borderRadius: 2,
-        },
-      ],
+      labels: Array.from({ length: 21 }, (_, i) => `${i * 5}%`),
+      datasets: [{
+        label: "Watts",
+        data: [],
+        borderColor: lineColor,
+        backgroundColor: fillColor,
+        pointBackgroundColor: lineColor,
+        pointBorderColor: lineColor,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        borderWidth: 2.5,
+        tension: 0.3,
+        fill: true,
+        spanGaps: false,
+      }],
     },
     options: {
       animation: false,
@@ -595,8 +553,8 @@ function initChart() {
       maintainAspectRatio: false,
       scales: {
         x: {
-          title: { display: true, text: "stroke", color: "#8fa3b3" },
-          ticks: { color: "#8fa3b3", maxTicksLimit: 15 },
+          title: { display: true, text: "drive %", color: "#8fa3b3" },
+          ticks: { color: "#8fa3b3", maxTicksLimit: 11 },
           grid: { color: "#1f2c3a" },
         },
         y: {
@@ -607,38 +565,44 @@ function initChart() {
         },
       },
       plugins: {
-        legend: { labels: { color: "#e6edf3" } },
+        legend: { display: false },
       },
     },
   });
 }
 
+function initChart() {
+  speedChart1 = buildChart("speedChart1", "#3fb6ff", "rgba(63,182,255,0.1)");
+  speedChart2 = buildChart("speedChart2", "#ff6b6b", "rgba(255,107,107,0.1)");
+}
+
+let simulation = null;
+let rafId = null;
+let lastFrameTime = null;
+let lastTelemetryUpdate = 0;
+
 function resetRaceState() {
-  raceState.running = false;
-  raceState.finished = false;
-  raceState.elapsed = 0;
-  raceState.realElapsed = 0;
-  raceState.lastFrameTime = null;
-  raceState.lastTelemetryUpdate = 0;
-  raceState.boat1 = { distance: 0, speed: 0, currentSpeed: 0, strokeRate: 0, strokePhase: 0, strokeCount: 0, finishTime: null, finishRealTime: null, strokePowers: [] };
-  raceState.boat2 = { distance: 0, speed: 0, currentSpeed: 0, strokeRate: 0, strokePhase: 0, strokeCount: 0, finishTime: null, finishRealTime: null, strokePowers: [] };
-  if (raceState.rafId) {
-    cancelAnimationFrame(raceState.rafId);
-    raceState.rafId = null;
-  }
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  if (simulation) simulation.reset();
+  lastFrameTime = null;
   marker1.style.left = "0%";
   marker2.style.left = "0%";
   renderOarStroke(marker1, 0);
   renderOarStroke(marker2, 0);
-  updateSplitDisplay();
-  updateDistanceSpeedDisplay();
-  updateTimeDisplay();
-  if (speedChart) {
-    speedChart.data.labels = [];
-    speedChart.data.datasets[0].data = [];
-    speedChart.data.datasets[1].data = [];
-    speedChart.update();
-  }
+  document.getElementById("rt1-body").innerHTML = "";
+  document.getElementById("rt2-body").innerHTML = "";
+  if (speedChart1) { speedChart1.data.datasets[0].data = []; speedChart1.update(); }
+  if (speedChart2) { speedChart2.data.datasets[0].data = []; speedChart2.update(); }
+  document.getElementById("t1-time").textContent = "0:00.0";
+  document.getElementById("t2-time").textContent = "0:00.0";
+  document.getElementById("t1-dist").textContent = "0 m";
+  document.getElementById("t2-dist").textContent = "0 m";
+  document.getElementById("t1-speed").textContent = "0.00 m/s";
+  document.getElementById("t2-speed").textContent = "0.00 m/s";
+  document.getElementById("t1-split").textContent = "--:--";
+  document.getElementById("t2-split").textContent = "--:--";
+  document.getElementById("t1-rate").textContent = "0 spm";
+  document.getElementById("t2-rate").textContent = "0 spm";
   raceStatusEl.textContent = "Ready";
   raceStatusEl.className = "race-status";
   startBtn.disabled = false;
@@ -651,26 +615,34 @@ function startRace() {
     alert("Assign at least one rower to a boat before starting the race.");
     return;
   }
-  if (raceState.finished) {
-    resetRaceState();
-  }
-  raceState.running = true;
-  raceState.lastFrameTime = null;
+  const b1rowers = boats.boat1.map((id, i) => {
+    if (!id) return null;
+    const r = { ...findRower(id) };
+    r._seatIdx = i;
+    r._seatSide = i % 2 === 0 ? 'port' : 'starboard';
+    return r;
+  }).filter(Boolean);
+  const b2rowers = boats.boat2.map((id, i) => {
+    if (!id) return null;
+    const r = { ...findRower(id) };
+    r._seatIdx = i;
+    r._seatSide = i % 2 === 0 ? 'port' : 'starboard';
+    return r;
+  }).filter(Boolean);
+  simulation = new RaceSimulation(b1rowers, b2rowers);
+  simulation.start();
   startBtn.disabled = true;
   stopBtn.disabled = false;
   raceStatusEl.textContent = "Racing...";
   raceStatusEl.className = "race-status running";
-
-  raceState.rafId = requestAnimationFrame(tickRace);
+  lastFrameTime = null;
+  rafId = requestAnimationFrame(tickRace);
 }
 
 function pauseRace() {
-  raceState.running = false;
-  if (raceState.rafId) {
-    cancelAnimationFrame(raceState.rafId);
-    raceState.rafId = null;
-  }
-  raceState.lastFrameTime = null;
+  if (simulation) simulation.pause();
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  lastFrameTime = null;
   startBtn.disabled = false;
   stopBtn.disabled = true;
   raceStatusEl.textContent = "Paused";
@@ -690,7 +662,7 @@ function renderOarStroke(markerEl, phase) {
     sweepT = 1 - t;
     inWater = false;
   }
-  const angle = -28 + sweepT * 46;
+  const angle = -30 + sweepT * 60;
 
   oarGroups.forEach((g) => {
     const side = Number(g.dataset.side);
@@ -700,116 +672,56 @@ function renderOarStroke(markerEl, phase) {
 }
 
 function tickRace(now) {
-  if (!raceState.running) return;
+  if (!simulation || !simulation.running) return;
 
-  if (raceState.lastFrameTime === null) {
-    raceState.lastFrameTime = now;
-  }
-  const realDtMs = now - raceState.lastFrameTime;
-  raceState.lastFrameTime = now;
+  if (lastFrameTime === null) lastFrameTime = now;
+  const realDt = (now - lastFrameTime) / 1000;
+  lastFrameTime = now;
+  lastTelemetryUpdate += realDt;
 
-  const realDt = realDtMs / 1000;
-  const dt = realDt * SIM_SPEED;
-  raceState.elapsed += dt;
-  raceState.realElapsed += realDt;
+  simulation.tick(realDt * SIM_SPEED);
+  const s = simulation.getState();
 
-  ["boat1", "boat2"].forEach((key) => {
-    const st = raceState[key];
-    if (st.finishTime !== null) return;
+  renderOarStroke(marker1, s.boat1.strokePhase);
+  renderOarStroke(marker2, s.boat2.strokePhase);
+  updateCourseMarkers(s);
+  updateChart(s);
+  updateRowerTelemetry(s);
+  updateTimeDisplay(s);
+  updateSplitDisplay(s);
 
-    const size = crewSize(key);
-    if (size === 0) return;
-
-    // acceleration model: currentSpeed approaches targetSpeed
-    const target = boatTargetSpeed(key);
-    const accel = boatAccelFactor(key);
-    const noise = (Math.random() - 0.5) * 0.05;
-    st.currentSpeed += (target + noise - st.currentSpeed) * accel * dt;
-    st.currentSpeed = Math.max(0, st.currentSpeed);
-    st.speed = st.currentSpeed;
-    st.distance = Math.min(RACE_DISTANCE, st.distance + st.speed * dt);
-
-    const displayDist = st.distance * DISPLAY_SCALE;
-    let targetRate = 36;
-    if (displayDist >= 1200) {
-      targetRate = 38;
-    } else if (st.strokeCount < 1) {
-      targetRate = 24;
-    } else if (st.strokeCount < 2) {
-      targetRate = 28;
-    } else if (st.strokeCount < 3) {
-      targetRate = 32;
-    } else if (st.strokeCount < 4) {
-      targetRate = 36;
-    } else if (st.strokeCount < 14) {
-      targetRate = 40;
-    } else {
-      targetRate = 36;
-    }
-    st.strokeRate = size > 0 ? targetRate : 0;
-
-    const strokesPerSecond = Math.max(st.strokeRate, 1) / 60;
-    const prevPhase = st.strokePhase;
-    st.strokePhase = (st.strokePhase + strokesPerSecond * dt) % 1;
-    if (st.strokePhase < prevPhase) {
-      st.strokeCount++;
-      const strokePower = boatStrokesPower(key);
-      st.strokePowers.push(strokePower);
-      updateChart();
-      updateSplitDisplay();
-    }
-
-    if (st.distance >= RACE_DISTANCE && st.finishTime === null) {
-      st.finishTime = raceState.elapsed;
-      st.finishRealTime = raceState.realElapsed;
-    }
-  });
-
-  renderOarStroke(marker1, raceState.boat1.strokePhase);
-  renderOarStroke(marker2, raceState.boat2.strokePhase);
-  updateCourseMarkers();
-
-  // distance + speed every 0.2s real time
-  raceState.lastTelemetryUpdate += realDt;
-  if (raceState.lastTelemetryUpdate >= 0.2) {
-    raceState.lastTelemetryUpdate = 0;
-    updateDistanceSpeedDisplay();
+  if (lastTelemetryUpdate >= 0.2) {
+    lastTelemetryUpdate = 0;
+    updateDistanceSpeedDisplay(s);
   }
 
-  // time + rate + power every frame
-  updateTimeDisplay();
-
-  const b1done = crewSize("boat1") === 0 || raceState.boat1.finishTime !== null;
-  const b2done = crewSize("boat2") === 0 || raceState.boat2.finishTime !== null;
-  if (b1done && b2done) {
+  if (s.finished) {
     finishRace();
     return;
   }
 
-  raceState.rafId = requestAnimationFrame(tickRace);
+  rafId = requestAnimationFrame(tickRace);
 }
 
 function finishRace() {
-  raceState.running = false;
-  raceState.finished = true;
-  if (raceState.rafId) {
-    cancelAnimationFrame(raceState.rafId);
-    raceState.rafId = null;
-  }
+  if (simulation) simulation.pause();
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  lastFrameTime = null;
   startBtn.disabled = false;
   stopBtn.disabled = true;
 
+  const s = simulation ? simulation.getState() : null;
   let msg = "Finished";
-  const t1 = raceState.boat1.finishTime;
-  const t2 = raceState.boat2.finishTime;
-  if (t1 !== null && t2 !== null) {
-    const tt1 = formatRealTime(t1 * DISPLAY_SCALE);
-    const tt2 = formatRealTime(t2 * DISPLAY_SCALE);
-    msg = t1 < t2 ? `🏆 Boat 1 wins (${tt1})` : (t2 < t1 ? `🏆 Boat 2 wins (${tt2})` : "Photo finish - tie!");
-  } else if (t1 !== null) {
-    msg = "🏆 Boat 1 wins!";
-  } else if (t2 !== null) {
-    msg = "🏆 Boat 2 wins!";
+  if (s) {
+    const t1 = s.boat1.finishDisplayTime;
+    const t2 = s.boat2.finishDisplayTime;
+    if (t1 !== null && t2 !== null) {
+      msg = t1 < t2 ? `🏆 Boat 1 wins (${formatRealTime(t1)})` : (t2 < t1 ? `🏆 Boat 2 wins (${formatRealTime(t2)})` : "Photo finish - tie!");
+    } else if (t1 !== null) {
+      msg = "🏆 Boat 1 wins!";
+    } else if (t2 !== null) {
+      msg = "🏆 Boat 2 wins!";
+    }
   }
   raceStatusEl.textContent = msg;
   raceStatusEl.className = "race-status finished";
@@ -819,7 +731,7 @@ function formatSplit(speed) {
   if (!speed || speed <= 0) return "--:--";
   const secPer500 = 500 / speed;
   const m = Math.floor(secPer500 / 60);
-  const s = Math.round(secPer500 % 60).toString().padStart(2, "0");
+  const s = (secPer500 % 60).toFixed(1).padStart(4, "0");
   return `${m}:${s}`;
 }
 
@@ -829,72 +741,94 @@ function formatRealTime(sec) {
   return `${m}:${s}`;
 }
 
-function updateSplitDisplay() {
-  const b1 = raceState.boat1;
-  const b2 = raceState.boat2;
-  document.getElementById("t1-split").textContent = formatSplit(b1.speed);
-  document.getElementById("t2-split").textContent = formatSplit(b2.speed);
-}
-
-function updateDistanceSpeedDisplay() {
-  const b1 = raceState.boat1;
-  const b2 = raceState.boat2;
-  document.getElementById("t1-dist").textContent = Math.ceil(b1.distance * DISPLAY_SCALE) + " m";
-  document.getElementById("t2-dist").textContent = Math.ceil(b2.distance * DISPLAY_SCALE) + " m";
-  document.getElementById("t1-speed").textContent = b1.speed.toFixed(2) + " m/s";
-  document.getElementById("t2-speed").textContent = b2.speed.toFixed(2) + " m/s";
-}
-
-function updateTimeDisplay() {
-  const b1 = raceState.boat1;
-  const b2 = raceState.boat2;
-  const t1 = b1.finishRealTime !== null ? b1.finishRealTime * DISPLAY_SCALE : raceState.realElapsed * DISPLAY_SCALE;
-  const t2 = b2.finishRealTime !== null ? b2.finishRealTime * DISPLAY_SCALE : raceState.realElapsed * DISPLAY_SCALE;
-  document.getElementById("t1-time").textContent = formatRealTime(t1);
-  document.getElementById("t2-time").textContent = formatRealTime(t2);
-  document.getElementById("t1-rate").textContent = (b1.strokeRate || 0) + " spm";
-  document.getElementById("t2-rate").textContent = (b2.strokeRate || 0) + " spm";
-  document.getElementById("t1-power").textContent = crewPower("boat1") + " W";
-  document.getElementById("t2-power").textContent = crewPower("boat2") + " W";
-  document.getElementById("t1-crew").textContent = crewSize("boat1");
-  document.getElementById("t2-crew").textContent = crewSize("boat2");
-}
-
 function getBowFinishPct() {
   const trackEl = document.querySelector(".lane-track");
-  if (!trackEl) return 100;
-  const trackWidth = trackEl.offsetWidth;
+  const finishEl = document.querySelector(".finish-line");
+  if (!trackEl || !finishEl) return 100;
+  const trackRect = trackEl.getBoundingClientRect();
+  const finishRect = finishEl.getBoundingClientRect();
+  const trackWidth = trackRect.width;
   if (trackWidth <= 0) return 100;
   const bowOffset = ((100 - (-20)) / 140) * 92;
-  return Math.min(100, (100 * (trackWidth - 55 - bowOffset)) / (trackWidth - 92));
+  const finishLeft = finishRect.left - trackRect.left;
+  return Math.min(100, Math.max(0, 100 * (finishLeft - bowOffset) / (trackWidth - 92)));
 }
 
-function updateCourseMarkers() {
+function updateSplitDisplay(state) {
+  if (!state) return;
+  document.getElementById("t1-split").textContent = formatSplit(state.boat1.speed);
+  document.getElementById("t2-split").textContent = formatSplit(state.boat2.speed);
+}
+
+function updateDistanceSpeedDisplay(state) {
+  if (!state) return;
+  document.getElementById("t1-dist").textContent = Math.ceil(state.boat1.displayDistance) + " m";
+  document.getElementById("t2-dist").textContent = Math.ceil(state.boat2.displayDistance) + " m";
+  document.getElementById("t1-speed").textContent = state.boat1.speed.toFixed(2) + " m/s";
+  document.getElementById("t2-speed").textContent = state.boat2.speed.toFixed(2) + " m/s";
+}
+
+function updateTimeDisplay(state) {
+  if (!state) return;
+  const dt = state.displayTime;
+  document.getElementById("t1-time").textContent = formatRealTime(state.boat1.finishDisplayTime !== null ? state.boat1.finishDisplayTime : dt);
+  document.getElementById("t2-time").textContent = formatRealTime(state.boat2.finishDisplayTime !== null ? state.boat2.finishDisplayTime : dt);
+  document.getElementById("t1-rate").textContent = (state.boat1.strokeRate || 0) + " spm";
+  document.getElementById("t2-rate").textContent = (state.boat2.strokeRate || 0) + " spm";
+}
+
+function updateCourseMarkers(state) {
   const finishPct = getBowFinishPct();
-  const pct1 = Math.min(finishPct, (raceState.boat1.distance / RACE_DISTANCE) * finishPct);
-  const pct2 = Math.min(finishPct, (raceState.boat2.distance / RACE_DISTANCE) * finishPct);
+  const pct1 = Math.min(100, (state.boat1.distance / 750) * finishPct);
+  const pct2 = Math.min(100, (state.boat2.distance / 750) * finishPct);
   const boatWidthPx = 92;
   marker1.style.left = `calc(${pct1}% - ${(pct1 / 100) * boatWidthPx}px)`;
   marker2.style.left = `calc(${pct2}% - ${(pct2 / 100) * boatWidthPx}px)`;
 }
 
-function updateChart() {
-  const b1 = raceState.boat1;
-  const b2 = raceState.boat2;
-  const maxStrokes = Math.max(b1.strokePowers.length, b2.strokePowers.length);
-  if (maxStrokes === 0) return;
-  const labels = [];
-  const d1 = [];
-  const d2 = [];
-  for (let i = 0; i < maxStrokes; i++) {
-    labels.push((i + 1).toString());
-    d1.push(b1.strokePowers[i] || null);
-    d2.push(b2.strokePowers[i] || null);
-  }
-  speedChart.data.labels = labels;
-  speedChart.data.datasets[0].data = d1;
-  speedChart.data.datasets[1].data = d2;
-  speedChart.update("none");
+function updateRowerTelemetry(state) {
+  ["boat1", "boat2"].forEach((key) => {
+    const tbody = document.getElementById(`rt${key === "boat1" ? "1" : "2"}-body`);
+    const data = state[key].rowerData || [];
+    if (data.length === 0) { tbody.innerHTML = ""; return; }
+
+    const avgPow = data.reduce((s, r) => s + r.basePower, 0) / data.length;
+    const avgEffPow = data.reduce((s, r) => s + r.effPower, 0) / data.length;
+    const avgTech = data.reduce((s, r) => s + r.baseTech, 0) / data.length;
+    const avgMod = data.reduce((s, r) => s + r.techMod, 0) / data.length;
+    const avgEffTech = data.reduce((s, r) => s + r.effTech, 0) / data.length;
+    const modClass = avgMod >= 0 ? "rt-tech-pos" : "rt-tech-neg";
+
+    const avgRow = `<tr class="rt-avg-row">
+      <td>Avg</td><td></td>
+      <td>${avgPow.toFixed(1)}</td>
+      <td>${avgEffPow.toFixed(1)}</td>
+      <td>${avgTech.toFixed(2)}</td>
+      <td class="${modClass}">${avgMod >= 0 ? "+" : ""}${avgMod.toFixed(2)}</td>
+      <td>${avgEffTech.toFixed(2)}</td>
+    </tr>`;
+
+    const rows = data.map((rd) => {
+      const modClass = rd.techMod >= 0 ? "rt-tech-pos" : "rt-tech-neg";
+      return `<tr>
+        <td>${seatLabel(rd.seatIdx)}</td>
+        <td>${rd.name}</td>
+        <td>${rd.basePower}</td>
+        <td>${rd.effPower}</td>
+        <td>${rd.baseTech}</td>
+        <td class="${modClass}">${rd.techMod >= 0 ? "+" : ""}${rd.techMod}</td>
+        <td>${rd.effTech}</td>
+      </tr>`;
+    }).join("");
+    tbody.innerHTML = avgRow + rows;
+  });
+}
+
+function updateChart(state) {
+  speedChart1.data.datasets[0].data = state.boat1.displayCurve || [];
+  speedChart1.update("none");
+  speedChart2.data.datasets[0].data = state.boat2.displayCurve || [];
+  speedChart2.update("none");
 }
 
 // ---------- Event wiring ----------

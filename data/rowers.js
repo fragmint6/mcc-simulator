@@ -101,6 +101,16 @@ const ROWERS_DATA = [
     "rarity": "Mid"
   },
   {
+    "name": "Alex Barnes",
+    "year": 2025,
+    "2k": "06:57.4",
+    "weight": 145.0,
+    "port": 4.4,
+    "starboard": 2.5,
+    "mentality": 3.3,
+    "rarity": "Noob"
+  },
+  {
     "name": "Danny Luo",
     "year": 2028,
     "2k": "06:58.4",
@@ -151,6 +161,16 @@ const ROWERS_DATA = [
     "rarity": "Mid"
   },
   {
+    "name": "James Milward",
+    "year": 2026,
+    "2k": "07:09.6",
+    "weight": 138.7,
+    "port": 2.4,
+    "starboard": 3.2,
+    "mentality": 3.1,
+    "rarity": "Noob"
+  },
+  {
     "name": "Alden Strubhar",
     "year": 2028,
     "2k": "07:10.0",
@@ -171,6 +191,16 @@ const ROWERS_DATA = [
     "rarity": "Mid"
   },
   {
+    "name": "Finnegan Switzer",
+    "year": 2025,
+    "2k": "07:10.6",
+    "weight": 151.0,
+    "port": 3.3,
+    "starboard": 3.9,
+    "mentality": 3.9,
+    "rarity": "Noob"
+  },
+  {
     "name": "Shaheen Tahir",
     "year": 2028,
     "2k": "07:14.0",
@@ -189,6 +219,16 @@ const ROWERS_DATA = [
     "starboard": 3.1,
     "mentality": 3.9,
     "rarity": "Mid"
+  },
+  {
+    "name": "Arham Jain",
+    "year": 2027,
+    "2k": "07:19.2",
+    "weight": 123.4,
+    "port": 2.7,
+    "starboard": 3.7,
+    "mentality": 2.7,
+    "rarity": "Noob"
   },
   {
     "name": "Ethan Hoffman",
@@ -238,6 +278,16 @@ const ROWERS_DATA = [
     "port": 3.6,
     "starboard": 2.4,
     "mentality": 2.8,
+    "rarity": "Noob"
+  },
+  {
+    "name": "Mickey Bekele",
+    "year": 2027,
+    "2k": "07:35.6",
+    "weight": 132.0,
+    "port": 2.7,
+    "starboard": 3.8,
+    "mentality": 3.9,
     "rarity": "Noob"
   },
   {

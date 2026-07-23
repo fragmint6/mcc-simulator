@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rowing Simulator</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -79,13 +80,43 @@
             <tr><td>Speed</td><td id="t1-speed">0.0 m/s</td><td id="t2-speed">0.0 m/s</td></tr>
             <tr><td>Split /500m</td><td id="t1-split">--:--</td><td id="t2-split">--:--</td></tr>
             <tr><td>Stroke Rate</td><td id="t1-rate">0 spm</td><td id="t2-rate">0 spm</td></tr>
-            <tr><td>Total Power</td><td id="t1-power">0 W</td><td id="t2-power">0 W</td></tr>
-            <tr><td>Crew Size</td><td id="t1-crew">0</td><td id="t2-crew">0</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="telemetry-chart">
-        <canvas id="speedChart" height="180"></canvas>
+      <div class="telemetry-charts">
+        <div class="telemetry-chart">
+          <div class="chart-header chart-header-1">Boat 1</div>
+          <canvas id="speedChart1" height="200"></canvas>
+        </div>
+        <div class="telemetry-chart">
+          <div class="chart-header chart-header-2">Boat 2</div>
+          <canvas id="speedChart2" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Panel: Individual Rower Telemetry -->
+  <section class="panel panel-wide" id="panel-rower-telemetry">
+    <h2>Per-Stroke Rower Data</h2>
+    <div class="rower-telemetry-grid">
+      <div class="rower-telemetry-col">
+        <h3 class="rt-boat-label rt-boat1">Boat 1</h3>
+        <table class="rt-table" id="rt1-table">
+          <thead>
+            <tr><th>Seat</th><th>Name</th><th>Base W</th><th>Eff W</th><th>Tech</th><th>Mod</th><th>Eff Tech</th></tr>
+          </thead>
+          <tbody id="rt1-body"></tbody>
+        </table>
+      </div>
+      <div class="rower-telemetry-col">
+        <h3 class="rt-boat-label rt-boat2">Boat 2</h3>
+        <table class="rt-table" id="rt2-table">
+          <thead>
+            <tr><th>Seat</th><th>Name</th><th>Base W</th><th>Eff W</th><th>Tech</th><th>Mod</th><th>Eff Tech</th></tr>
+          </thead>
+          <tbody id="rt2-body"></tbody>
+        </table>
       </div>
     </div>
   </section>
@@ -93,7 +124,8 @@
 </main>
 
 <script src="data/rowers.js"></script>
+<script src="simulation.js"></script>
 <script src="app.js"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1f7e7d2580a250b',t:'MTc4NDc4MDU2Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+
 </body>
 </html>
