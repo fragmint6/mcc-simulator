@@ -41,7 +41,7 @@ class RaceSimulation {
   _getTargetRate(strokeCount, distanceFraction, coxswain) {
     if (distanceFraction >= 0.8) {
       const mot = coxswain ? Math.max(0, Math.min(5, coxswain.motivation || 0)) : 0;
-      return 36 + Math.round(mot * 0.6);
+      return 34 + Math.round(mot * 0.4);
     }
     if (strokeCount < 5) return [20, 30, 36, 38, 40][strokeCount];
     return 36;
@@ -50,7 +50,7 @@ class RaceSimulation {
   _getPhaseMultiplier(strokeCount, distanceFraction, mentality, coxswain) {
     if (distanceFraction >= 0.8) {
       const mot = coxswain ? Math.max(0, Math.min(5, coxswain.motivation || 0)) : 0;
-      return 1.15 + mot * 0.03;
+      return 1.02 + mot * 0.015;
     }
     if (strokeCount < 5) return 1.20;
     return 0.85 + 0.03 * Math.max(0, Math.min(5, mentality || 0));
@@ -84,10 +84,10 @@ class RaceSimulation {
   }
 
   _getMassFactor(rowers, coxswain) {
-    const crewWeight = rowers.reduce((s, r) => s + (r.weight || 150), 0);
+    const crewWeight = rowers.reduce((s, r) => s + (r.weight || 100), 0);
     const coxWeight = coxswain ? (coxswain.weight || 105) : 0;
-    const raw = 1364 / (crewWeight + coxWeight + 100);
-    return 1 + (raw - 1) * 0.4;
+    const raw = 1535 / (crewWeight + coxWeight + 100);
+    return 1 + (raw - 1) * 0.6;
   }
 
   _generateCurve(totalWatts, avgTech) {
@@ -144,11 +144,11 @@ class RaceSimulation {
     boat.totalWatts = totalWatts;
 
     // Compute the impulse this stroke will deliver over the drive phase.
-    const techFactor = 0.85 + 0.03 * avgTech;
+    const techFactor = 0.60 + 0.08 * avgTech;
     const rateFactor = 0.7 + 0.0075 * boat.strokeRate;
     const driveDuration = 0.35 / (boat.strokeRate / 60);
     const massFactor = this._getMassFactor(boat.rowers, cox);
-    const impulse = totalWatts * techFactor * rateFactor * driveDuration * 0.00027 * massFactor;
+    const impulse = totalWatts * techFactor * rateFactor * driveDuration * 0.00028 * massFactor;
     boat._impulseThisStroke = impulse;
 
     boat.fullCurve = this._generateCurve(totalWatts, avgTech);
@@ -220,10 +220,10 @@ class RaceSimulation {
       if (boat.strokeCount === 0 && boat._impulseThisStroke === 0) {
         const baseTotal = boat.rowers.reduce((s, r) => s + (r.power || 0), 0);
         const baseTech = boat.rowers.reduce((s, r) => s + (r._seatSide === 'port' ? (r.port || 0) : (r.starboard || 0)), 0) / boat.rowers.length;
-        const techFactor = 0.85 + 0.03 * baseTech;
+        const techFactor = 0.60 + 0.08 * baseTech;
         const rateFactor = 0.7 + 0.0075 * 20;
         const driveDuration = 0.35 / (20 / 60);
-        boat._impulseThisStroke = baseTotal * techFactor * rateFactor * driveDuration * 0.00027 * this._getMassFactor(boat.rowers, boat.coxswain);
+        boat._impulseThisStroke = baseTotal * techFactor * rateFactor * driveDuration * 0.00028 * this._getMassFactor(boat.rowers, boat.coxswain);
         boat.totalWatts = Math.round(baseTotal * 1.2);
         boat.fullCurve = this._generateCurve(boat.totalWatts, baseTech);
         boat.rowerData = boat.rowers.map(r => this._computeRowerOutput(r, 0, 0));

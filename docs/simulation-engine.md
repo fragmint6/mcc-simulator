@@ -28,16 +28,17 @@ Each stroke delivers an impulse that accelerates the boat. The impulse is comput
 
 ```
 driveDuration = 0.35 / (strokeRate / 60)
-massFactor = 1364 / (totalCrewWeight + 100)
-impulse = totalWatts × techFactor × rateFactor × driveDuration × 0.00027 × massFactor
+raw = 1535 / (totalCrewWeight + coxWeight + 100)
+massFactor = 1 + (raw - 1) × 0.6
+impulse = totalWatts × techFactor × rateFactor × driveDuration × 0.00028 × massFactor
 impulseRate = impulse / driveDuration
 speed += impulseRate × dt    (applied each tick during drive)
 ```
 
 Where:
-- `techFactor = 0.85 + 0.03 × avgTech` — higher technique = more efficient force transfer
+- `techFactor = 0.60 + 0.08 × avgTech` — higher technique = more efficient force transfer
 - `rateFactor = 0.70 + 0.0075 × strokeRate` — higher rates produce more force per stroke
-- `massFactor` — normalizes total boat weight (crew + 100 lb shell) against a reference 1364 lb (8 × 158 lb avg crew + shell), then blended 60% toward 1.0 so weight has a noticeable but mild effect. Heavier crews accelerate slightly less per watt, lighter crews slightly more.
+- `massFactor` — normalizes total boat weight (crew + coxswain + 100 lb shell) against a reference 1535 lb (8 × 165 lb avg crew + shell), then blended 60% toward 1.0 via `1 + (raw - 1) * 0.6` so weight has a noticeable but mild effect. Heavier crews accelerate slightly less per watt, lighter crews slightly more.
 
 The impulse is spread evenly across the drive phase so the boat accelerates smoothly through each stroke.
 
@@ -63,7 +64,7 @@ On the first tick, the engine pre-computes the first stroke's impulse (using the
 | 3       | 38        |
 | 4       | 40        |
 | 5+      | 36        |
-| last 1/5th (≥600m) | 38 |
+| last 1/5th (≥80%) | 34 + round(motivation × 0.4) |
 
 Rates have ±1 spm random variation. Stroke rate is set at stroke completion and stays constant within the stroke.
 
@@ -76,7 +77,7 @@ effPower = round(basePower × phaseMultiplier × decayPower + wattVariance)
 - `wattVariance` = uniform in [-25, +25] W
 - `phaseMultiplier` depends on race phase:
   - **Start** (stroke < 5): 1.20
-  - **Sprint** (distance ≥ 80%): 1.20
+  - **Sprint** (distance ≥ 80%): 1.02 + motivation × 0.015
   - **Middle**: `0.85 + 0.03 × mentality` (clamped [0, 5])
 
 ### Technique
@@ -89,10 +90,11 @@ effTech    = clamp(baseTech × decayTech + techVariance, 0.5, 5.0)
 ### Fatigue / Decay
 ```
 raceFrac   = min(1, distanceFraction)
-decayPower = 1 - raceFrac × 0.15 × (1 - mentality / 5)
-decayTech  = 1 - raceFrac × 0.12 × (1 - mentality / 5)
+decayPower = 1 - raceFrac × 0.20 × (1 - mentality / 5) × (1 - strategy × 0.10)
+decayTech  = 1 - raceFrac × 0.18 × (1 - mentality / 5) × (1 - techCalls × 0.10)
 ```
-Mentality 5: no decay at finish. Mentality 0: −15% power, −12% technique.
+Mentality 5: no decay at finish. Mentality 0: −20% power, −18% technique.
+Coxswain strategy and tech_calls can mitigate decay.
 
 ## Power Curve
 
@@ -112,7 +114,7 @@ Phase advances each frame by `strokeRate / 60 × dt`. When phase wraps past 1, a
 
 | Method | Description |
 |--------|-------------|
-| `constructor(boat1Rowers, boat2Rowers)` | Accepts arrays of rower objects |
+| `constructor(boat1Rowers, boat2Rowers, boat1Coxswain, boat2Coxswain)` | Accepts arrays of rower objects and coxswain objects (or null) |
 | `tick(dt)` | Advance simulation by `dt` seconds |
 | `start()` | Begin/resume the race |
 | `pause()` | Pause the race |
@@ -126,6 +128,7 @@ Phase advances each frame by `strokeRate / 60 × dt`. When phase wraps past 1, a
 {
   name:       string,
   power:      number,   // base watts (from 2k score)
+  weight:     number,   // lbs, used for mass factor
   port:       number,   // [0-5] port technique
   starboard:  number,   // [0-5] starboard technique
   mentality:  number,   // [0-5] affects middle-maintenance

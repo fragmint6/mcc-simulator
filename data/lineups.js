@@ -6,7 +6,7 @@ const LINEUPS_DATA = [
   },
   {
     "name": "2V 2025/26",
-    "rowers": ["Shaheen Tahir", "Colton Nagel", "Ethan Hoffman", "Rieden Rebugio", "Alex Absher", "Jainam Shah", "Theodore Nedelescu", "Abhay Shukla"],
+    "rowers": ["Shaheen Tahir", "Colton Nagel", "Ethan Hoffman", "Rieden Rebugio", "Alex Absher", "Jainam Shah", "Theodor Nedelescu", "Abhay Shukla"],
     "coxswain": "Alexander Tran"
   },
   {

@@ -1,8 +1,8 @@
-# McLean Crew Manager Rating System
+# McLean Crew Simulator Rating System
 
 ## Overall Rating
 
-OVR = 0.50 * R2k + 0.25 * RTech + 0.15 * RPW + 0.10 * RMental
+OVR = 0.50 × R2k + 0.25 × RTech + 0.15 × RPW + 0.10 × RMental
 
 Round OVR to the nearest whole number.
 
@@ -12,7 +12,7 @@ Round OVR to the nearest whole number.
 
 Calculated continuously without rounding 2k times to preserve precise performance gaps.
 
-R2k = 92 - ((Total2kSeconds - 390) / 5) * 3
+R2k = 92 - ((Total2kSeconds - 390) / 5) × 3
 
 ### Benchmark Examples
 
@@ -35,11 +35,12 @@ R2k = 92 - ((Total2kSeconds - 390) / 5) * 3
 
 ## 2. Technique Rating (25%)
 
-Weighted double towards the rower's preferred side to reward primary side proficiency:
+When a seat side is known (port or starboard), the rower's rating uses only that side's technique. When unknown, it uses a weighted average favoring the stronger side:
 
-TechniqueStars = (2 * max(PortTech, StarboardTech) + min(PortTech, StarboardTech)) / 3
+Seat known: techStars = side-specific technique (port or starboard)
+Seat unknown: techStars = (2 × max(port, starboard) + min(port, starboard)) / 3
 
-RTech = 18 * TechniqueStars + 9
+RTech = 18 × techStars + 9
 
 ### Benchmark Examples
 * 5.0 Stars: 99.0
@@ -60,16 +61,16 @@ Watts = 2.80 / ((SplitSeconds / 500) ^ 3)
 
 PowerToWeight = Watts / WeightLbs
 
-RPW = min(99, max(50, PowerToWeight * 38.0))
+RPW = max(50, min(99, PowerToWeight × 38.0))
 
 ---
 
 ## 4. Mentality Rating (10%)
 
-RMental = 18 * MentalityStars + 9
+RMental = 18 × MentalityStars + 9
 
 ---
 
 ## Final Formula Summary
 
-OVR = Round(0.50 * R2k + 0.25 * RTech + 0.15 * RPW + 0.10 * RMental)
+OVR = Round(0.50 × R2k + 0.25 × RTech + 0.15 × RPW + 0.10 × RMental)

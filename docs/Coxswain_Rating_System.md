@@ -4,12 +4,11 @@ This document defines the official rating calculation for coxswains in the rowin
 
 ---
 
-# Overall Rating Formula
+## Overall Rating Formula
 
-## Step 1: Calculate Weighted Stars
+### Step 1: Calculate Weighted Stars
 
 Each coxswain is rated from **1.0–5.0 stars** in the following attributes:
-
 - Motivation
 - Strategy
 - Technical Calls
@@ -17,42 +16,34 @@ Each coxswain is rated from **1.0–5.0 stars** in the following attributes:
 
 Calculate the weighted average:
 
-```text
-WeightedStars =
-0.28 * Motivation +
-0.18 * Strategy +
-0.14 * TechCalls +
-0.35 * Steering
+```
+WeightedStars = 0.28 × Motivation + 0.18 × Strategy + 0.14 × TechCalls + 0.35 × Steering
 ```
 
 Steering is weighted the highest because it has the greatest direct impact on race performance.
 
 ---
 
-## Step 2: Calculate Base Overall
+### Step 2: Calculate Base Overall
 
 Convert the weighted stars into an overall rating:
 
-```text
-BaseOVR =
-18 * WeightedStars
-+ 9
-+ 4 * (WeightedStars - 4)^2
+```
+BaseOVR = 18 × WeightedStars + 9 + 4 × (WeightedStars - 4)²
 ```
 
 This nonlinear bonus rewards elite coxswains more heavily while keeping average coxswains balanced.
 
 ---
 
-## Step 3: Apply Weight Adjustment
+### Step 3: Apply Weight Adjustment
 
 A lighter coxswain provides a slight advantage by reducing boat weight, but weight should never outweigh skill.
 
 Use Charlie Murphy (105 lbs) as the baseline.
 
-```text
-WeightAdjustment =
-(105 - WeightLbs) / 10
+```
+WeightAdjustment = (105 - WeightLbs) / 10
 ```
 
 Examples:
@@ -70,18 +61,17 @@ Examples:
 
 ---
 
-## Step 4: Final Overall
+### Step 4: Final Overall
 
-```text
-FinalOVR =
-BaseOVR + WeightAdjustment
+```
+FinalOVR = BaseOVR + WeightAdjustment
 ```
 
 Round the final result to the nearest whole number.
 
 ---
 
-# Attribute Weights
+## Attribute Weights
 
 | Attribute | Weight |
 |-----------|-------:|
@@ -93,11 +83,11 @@ Round the final result to the nearest whole number.
 
 ---
 
-# Example Calculations
+## Example Calculations
 
-## Charlie Murphy
+### Charlie Murphy
 
-```text
+```
 Motivation = 4.8
 Strategy = 4.5
 TechCalls = 4.7
@@ -105,46 +95,35 @@ Steering = 4.9
 Weight = 105 lbs
 ```
 
-### Weighted Stars
+#### Weighted Stars
 
-```text
-WeightedStars =
-0.28(4.8)
-+0.18(4.5)
-+0.14(4.7)
-+0.35(4.9)
-
-= 4.52
+```
+WeightedStars = 0.28(4.8) + 0.18(4.5) + 0.14(4.7) + 0.35(4.9) = 4.52
 ```
 
-### Base Overall
+#### Base Overall
 
-```text
-BaseOVR =
-18(4.52)
-+9
-+4(4.52-4)^2
-
-≈ 97.3
+```
+BaseOVR = 18(4.52) + 9 + 4(4.52-4)² ≈ 97.3
 ```
 
-### Weight Adjustment
+#### Weight Adjustment
 
-```text
+```
 (105-105)/10 = 0
 ```
 
-### Final Rating
+#### Final Rating
 
-```text
+```
 FinalOVR ≈ 97
 ```
 
 ---
 
-## Alexander Tran
+### Alexander Tran
 
-```text
+```
 Motivation = 4.4
 Strategy = 4.0
 TechCalls = 4.3
@@ -152,15 +131,15 @@ Steering = 3.5
 Weight = 125 lbs
 ```
 
-### Final Rating
+#### Final Rating
 
 Approximately **82 OVR**
 
 ---
 
-## Orie Butler
+### Orie Butler
 
-```text
+```
 Motivation = 3.0
 Strategy = 2.0
 TechCalls = 2.0
@@ -168,13 +147,13 @@ Steering = 2.2
 Weight = 95 lbs
 ```
 
-### Final Rating
+#### Final Rating
 
 Approximately **53 OVR**
 
 ---
 
-# Design Philosophy
+## Design Philosophy
 
 - Steering is the most important coxswain skill.
 - Motivation is the second most important because it directly influences race execution.

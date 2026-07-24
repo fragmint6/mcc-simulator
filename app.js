@@ -109,17 +109,26 @@ function findCoxswainByName(name) {
 
 function computeBoatOVR(boatKey) {
   const seatIds = boats[boatKey];
-  let total = 0, count = 0;
+  const ovrs = [];
   seatIds.forEach((id, i) => {
     if (!id) return;
     const r = findRower(id);
     if (!r) return;
     const side = i % 2 === 0 ? 'port' : 'starboard';
-    total += computeOVR(r, side);
-    count++;
+    ovrs.push(computeOVR(r, side));
   });
-  if (count === 0) return null;
-  return Math.round(total / count);
+  if (ovrs.length === 0) return null;
+  const avgAll = ovrs.reduce((a, b) => a + b, 0) / ovrs.length;
+  const top3 = [...ovrs].sort((a, b) => b - a).slice(0, 3);
+  const avgTop3 = top3.reduce((a, b) => a + b, 0) / top3.length;
+  let coxOVR = 0;
+  const coxId = boatCoxswains[boatKey];
+  if (coxId) {
+    const cox = findCoxswain(coxId);
+    if (cox) coxOVR = computeCOXR(cox);
+  }
+  const boatOVR = avgAll * 0.70 + avgTop3 * 0.18 + coxOVR * 0.12;
+  return Math.round(Math.max(40, Math.min(99, boatOVR)));
 }
 
 function updateBoatOVR(boatKey) {
@@ -151,12 +160,19 @@ function showLineupPopup(boatKey) {
     const term = (filter || "").toLowerCase();
     body.innerHTML = lineups
       .filter(l => !term || l.name.toLowerCase().includes(term))
-      .map((l, i) => `
+      .map((l, i) => {
+        const ovr = computeLineupOVR(l);
+        const ovrRarity = rarityFromOVR(ovr);
+        const rs = rarityStyle(ovrRarity);
+        return `
         <button class="lineup-option" data-idx="${i}">
-          <span class="lineup-option-name">${l.name}</span>
-          <span class="lineup-option-detail">${(l.rowers || []).length} rowers${l.coxswain ? ' · ' + l.coxswain : ''}</span>
-        </button>
-      `).join("") || '<div class="lineup-empty">No lineups found</div>';
+          <div class="lineup-option-text">
+            <span class="lineup-option-name">${l.name}</span>
+            <span class="lineup-option-detail">${(l.rowers || []).length} rowers${l.coxswain ? ' · ' + l.coxswain : ''}</span>
+          </div>
+          <span class="lineup-option-ovr" style="background:${rs.color}">${ovr}</span>
+        </button>`;
+      }).join("") || '<div class="lineup-empty">No lineups found</div>';
 
     body.querySelectorAll(".lineup-option").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -206,6 +222,28 @@ function computeCOXR(c) {
   const base = 18 * ws + 9 + 4 * Math.pow(Math.max(0, ws - 4), 2);
   const adj = (105 - (c.weight || 105)) / 10;
   return Math.round(base + adj);
+}
+
+function computeLineupOVR(lineup) {
+  if (!lineup || !lineup.rowers || lineup.rowers.length === 0) return 0;
+  const ovrs = [];
+  lineup.rowers.forEach((name, i) => {
+    const r = findRowerByName(name);
+    if (!r) return;
+    const side = i % 2 === 0 ? 'port' : 'starboard';
+    ovrs.push(computeOVR(r, side));
+  });
+  if (ovrs.length === 0) return 0;
+  const avgAll = ovrs.reduce((a, b) => a + b, 0) / ovrs.length;
+  const top3 = [...ovrs].sort((a, b) => b - a).slice(0, 3);
+  const avgTop3 = top3.reduce((a, b) => a + b, 0) / top3.length;
+  let coxOVR = 0;
+  if (lineup.coxswain) {
+    const cox = findCoxswainByName(lineup.coxswain);
+    if (cox) coxOVR = computeCOXR(cox);
+  }
+  const boatOVR = avgAll * 0.70 + avgTop3 * 0.18 + coxOVR * 0.12;
+  return Math.round(Math.max(40, Math.min(99, boatOVR)));
 }
 
 // boat assignment state: array of length SEATS_PER_BOAT, each null or rower id
@@ -679,11 +717,27 @@ function buildMedalsHTML(medals) {
   }).join("");
 }
 
+function buildLineupsHTML(name, type) {
+  if (!lineups || lineups.length === 0) return '<div class="assign-no-lineups">No lineups available</div>';
+  const rowerLineups = type === 'rower'
+    ? lineups.filter(l => l.rowers && l.rowers.includes(name))
+    : lineups.filter(l => l.coxswain === name);
+  if (rowerLineups.length === 0) return '<div class="assign-no-lineups">Not in any lineup</div>';
+  return rowerLineups.map((l, i) => {
+    return `<div class="assign-lineup-entry" style="animation-delay:${0.15 + i * 0.06}s">
+      <span class="lineup-name">${l.name}</span>
+    </div>`;
+  }).join("");
+}
+
 function showAssignPopup(item, type) {
   assignPopupData = { item, type };
   const popupEl = document.getElementById("assignPopup");
   popupEl.style.display = "flex";
   const isCox = type === 'coxswain';
+  const effRarity = isCox ? (item.rarity || "Unknown") : displayRarity(item);
+  const rs = rarityStyle(effRarity);
+  popupEl.style.setProperty('--rarity-glow', rs.color);
   const titleEl = document.getElementById("assignPopupTitle");
   const icon = isCox ? '<i class="fa-solid fa-ear-deaf"></i>' : '<i class="fa-solid fa-person"></i>';
   titleEl.innerHTML = `${icon} ${item.name}`;
@@ -692,7 +746,9 @@ function showAssignPopup(item, type) {
 
 function closeAssignPopup() {
   assignPopupData = null;
-  document.getElementById("assignPopup").style.display = "none";
+  const popupEl = document.getElementById("assignPopup");
+  popupEl.style.display = "none";
+  popupEl.style.removeProperty('--rarity-glow');
 }
 
 function renderAssignPopup() {
@@ -704,14 +760,19 @@ function renderAssignPopup() {
   const rarityAttr = effRarity === "Unknown" ? "unknown" : effRarity;
   const hoverHTML = buildHoverCardHTML(item, type);
   const medalsHTML = buildMedalsHTML(item.medals);
+  const lineupsHTML = buildLineupsHTML(item.name, type);
 
-  // Left column: hover card + medals
+  // Left column: hover card + medals + lineups
   const leftCol = `
     <div class="assign-left-col">
       <div class="rower-hover-card popup-card-static" data-rarity="${rarityAttr}">${hoverHTML}</div>
       <div class="assign-medals">
         <div class="assign-medals-title"><i class="fa-solid fa-trophy"></i> State Medals</div>
         <div class="assign-medals-list">${medalsHTML}</div>
+      </div>
+      <div class="assign-lineups">
+        <div class="assign-lineups-title"><i class="fa-solid fa-people-group"></i> Lineups</div>
+        <div class="assign-lineups-list">${lineupsHTML}</div>
       </div>
     </div>
   `;
@@ -776,10 +837,8 @@ function renderAssignPopup() {
       const boatKey = btn.dataset.boat;
       const seatIndex = parseInt(btn.dataset.seat);
       if (type === 'rower') {
-        removeRowerFromBoats(item.id);
         boats[boatKey][seatIndex] = item.id;
       } else {
-        removeCoxswainFromBoats(item.id);
         boatCoxswains[boatKey] = item.id;
       }
       renderAll();
@@ -919,6 +978,7 @@ function resetRaceState() {
   document.getElementById("t2-rate").textContent = "0 spm";
   raceStatusEl.textContent = "Ready";
   raceStatusEl.className = "race-status";
+  delete raceStatusEl.dataset.winner;
   startBtn.disabled = false;
   stopBtn.disabled = true;
   stopBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
@@ -1074,6 +1134,16 @@ function tickRace(now) {
     updateDistanceSpeedDisplay(s);
   }
 
+  if (s.boat1.finishDisplayTime !== null && !raceStatusEl.dataset.winner) {
+    raceStatusEl.dataset.winner = 'boat1';
+    raceStatusEl.innerHTML = `<i class="fa-solid fa-trophy"></i> Richard Paul wins (${formatRealTime(s.boat1.finishDisplayTime)})`;
+    raceStatusEl.className = "race-status finished";
+  } else if (s.boat2.finishDisplayTime !== null && !raceStatusEl.dataset.winner) {
+    raceStatusEl.dataset.winner = 'boat2';
+    raceStatusEl.innerHTML = `<i class="fa-solid fa-trophy"></i> The Challenger wins (${formatRealTime(s.boat2.finishDisplayTime)})`;
+    raceStatusEl.className = "race-status finished";
+  }
+
   if (s.finished) {
     finishRace();
     return;
@@ -1090,21 +1160,23 @@ function finishRace() {
   stopBtn.disabled = true;
   stopBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
 
-  const s = simulation ? simulation.getState() : null;
-  let msg = "Finished";
-  if (s) {
-    const t1 = s.boat1.finishDisplayTime;
-    const t2 = s.boat2.finishDisplayTime;
-    if (t1 !== null && t2 !== null) {
-      msg = t1 < t2 ? `<i class="fa-solid fa-trophy"></i> Richard Paul wins (${formatRealTime(t1)})` : (t2 < t1 ? `<i class="fa-solid fa-trophy"></i> The Challenger wins (${formatRealTime(t2)})` : "Photo finish - tie!");
-    } else if (t1 !== null) {
-      msg = '<i class="fa-solid fa-trophy"></i> Richard Paul wins!';
-    } else if (t2 !== null) {
-      msg = '<i class="fa-solid fa-trophy"></i> The Challenger wins!';
+  if (!raceStatusEl.dataset.winner) {
+    const s = simulation ? simulation.getState() : null;
+    let msg = "Finished";
+    if (s) {
+      const t1 = s.boat1.finishDisplayTime;
+      const t2 = s.boat2.finishDisplayTime;
+      if (t1 !== null && t2 !== null) {
+        msg = t1 < t2 ? `<i class="fa-solid fa-trophy"></i> Richard Paul wins (${formatRealTime(t1)})` : (t2 < t1 ? `<i class="fa-solid fa-trophy"></i> The Challenger wins (${formatRealTime(t2)})` : "Photo finish - tie!");
+      } else if (t1 !== null) {
+        msg = '<i class="fa-solid fa-trophy"></i> Richard Paul wins!';
+      } else if (t2 !== null) {
+        msg = '<i class="fa-solid fa-trophy"></i> The Challenger wins!';
+      }
     }
+    raceStatusEl.innerHTML = msg;
+    raceStatusEl.className = "race-status finished";
   }
-  raceStatusEl.innerHTML = msg;
-  raceStatusEl.className = "race-status finished";
 }
 
 function formatSplit(speed) {
@@ -1249,7 +1321,6 @@ function init() {
   loadRowers();
   loadCoxswains();
   loadLineups();
-  seedDefaultBoats();
   renderAll();
   initChart();
   resetRaceState();
