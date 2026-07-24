@@ -8,6 +8,9 @@
 const SEATS_PER_BOAT = 8;
 
 let rowers = []; // populated from data/rowers.js at startup
+let coxswains = []; // populated from data/coxswains.js at startup
+let lineups = []; // populated from data/lineups.js at startup
+let boatCoxswains = { boat1: null, boat2: null };
 
 // Parse a 2k score string like "6:28.9" or "06:28.9" into total seconds.
 function parseScoreToSeconds(score) {
@@ -49,6 +52,7 @@ function buildRowerFromRecord(record, index) {
     starboard: record.starboard || 0,
     mentality: record.mentality || 0,
     rarity: record.rarity || "Unknown",
+    medals: record.medals || [],
   };
 }
 
@@ -61,18 +65,168 @@ function loadRowers() {
   }
 }
 
+function buildCoxswainFromRecord(record, index) {
+  return {
+    id: "c" + index,
+    name: record.name,
+    year: record.year,
+    motivation: record.motivation || 0,
+    strategy: record.strategy || 0,
+    tech_calls: record.tech_calls || 0,
+    steering: record.steering || 0,
+    weight: record.weight || 105,
+    rarity: record.rarity || "Unknown",
+    medals: record.medals || [],
+    ovr: computeCOXR(record),
+  };
+}
+
+function loadCoxswains() {
+  if (typeof COXSWAINS_DATA !== "undefined" && Array.isArray(COXSWAINS_DATA)) {
+    coxswains = COXSWAINS_DATA.map(buildCoxswainFromRecord);
+  } else {
+    console.error("No coxswain data found (COXSWAINS_DATA missing).");
+    coxswains = [];
+  }
+}
+
+function loadLineups() {
+  if (typeof LINEUPS_DATA !== "undefined" && Array.isArray(LINEUPS_DATA)) {
+    lineups = LINEUPS_DATA.map((rec, i) => ({ ...rec, id: "l" + i }));
+  } else {
+    console.error("No lineup data found (LINEUPS_DATA missing).");
+    lineups = [];
+  }
+}
+
+function findRowerByName(name) {
+  return rowers.find(r => r.name === name) || null;
+}
+
+function findCoxswainByName(name) {
+  return coxswains.find(c => c.name === name) || null;
+}
+
+function computeBoatOVR(boatKey) {
+  const seatIds = boats[boatKey];
+  let total = 0, count = 0;
+  seatIds.forEach((id, i) => {
+    if (!id) return;
+    const r = findRower(id);
+    if (!r) return;
+    const side = i % 2 === 0 ? 'port' : 'starboard';
+    total += computeOVR(r, side);
+    count++;
+  });
+  if (count === 0) return null;
+  return Math.round(total / count);
+}
+
+function updateBoatOVR(boatKey) {
+  const el = document.getElementById(boatKey === 'boat1' ? 'boat1Ovr' : 'boat2Ovr');
+  const ovr = computeBoatOVR(boatKey);
+  el.textContent = ovr !== null ? `OVR: ${ovr}` : 'OVR: --';
+}
+
+function showLineupPopup(boatKey) {
+  const overlay = document.createElement("div");
+  overlay.className = "lineup-overlay";
+  const popup = document.createElement("div");
+  popup.className = "lineup-popup";
+  popup.innerHTML = `
+    <div class="lineup-popup-header">
+      <span>Select Lineup</span>
+      <button class="lineup-popup-close">&times;</button>
+    </div>
+    <input class="lineup-search" type="text" placeholder="Search lineups..." />
+    <div class="lineup-popup-body"></div>
+  `;
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(() => popup.classList.add("open"));
+
+  function renderLineups(filter) {
+    const body = popup.querySelector(".lineup-popup-body");
+    const term = (filter || "").toLowerCase();
+    body.innerHTML = lineups
+      .filter(l => !term || l.name.toLowerCase().includes(term))
+      .map((l, i) => `
+        <button class="lineup-option" data-idx="${i}">
+          <span class="lineup-option-name">${l.name}</span>
+          <span class="lineup-option-detail">${(l.rowers || []).length} rowers${l.coxswain ? ' · ' + l.coxswain : ''}</span>
+        </button>
+      `).join("") || '<div class="lineup-empty">No lineups found</div>';
+
+    body.querySelectorAll(".lineup-option").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.dataset.idx);
+        const lineup = lineups[idx];
+        if (!lineup) return;
+
+        boats[boatKey] = Array(SEATS_PER_BOAT).fill(null);
+        boatCoxswains[boatKey] = null;
+
+        if (lineup.coxswain) {
+          const cox = findCoxswainByName(lineup.coxswain);
+          if (cox) boatCoxswains[boatKey] = cox.id;
+        }
+
+        if (lineup.rowers && lineup.rowers.length) {
+          lineup.rowers.forEach((name, i) => {
+            if (i >= SEATS_PER_BOAT) return;
+            const rower = findRowerByName(name);
+            if (rower) boats[boatKey][i] = rower.id;
+          });
+        }
+
+        overlay.remove();
+        renderAll();
+      });
+    });
+  }
+
+  popup.querySelector(".lineup-search").addEventListener("input", (e) => {
+    renderLineups(e.target.value);
+  });
+
+  renderLineups("");
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  popup.querySelector(".lineup-popup-close").addEventListener("click", () => overlay.remove());
+}
+
+function computeCOXR(c) {
+  const ws = 0.28 * (c.motivation || 0)
+           + 0.18 * (c.strategy || 0)
+           + 0.14 * (c.tech_calls || 0)
+           + 0.35 * (c.steering || 0);
+  const base = 18 * ws + 9 + 4 * Math.pow(Math.max(0, ws - 4), 2);
+  const adj = (105 - (c.weight || 105)) / 10;
+  return Math.round(base + adj);
+}
+
 // boat assignment state: array of length SEATS_PER_BOAT, each null or rower id
 let boats = {
   boat1: Array(SEATS_PER_BOAT).fill(null),
   boat2: Array(SEATS_PER_BOAT).fill(null),
 };
 
+// Search and popup state
+let rowerSearchTerm = '';
+let coxswainSearchTerm = '';
+let assignPopupData = null; // { type: 'rower'|'coxswain', item: {...} }
+
 // ---------- DOM refs ----------
 const rowerListEl = document.getElementById("rowerList");
+const coxswainListEl = document.getElementById("coxswainList");
 const boat1SeatsEl = document.getElementById("boat1Seats");
 const boat2SeatsEl = document.getElementById("boat2Seats");
 const boat1MetaEl = document.getElementById("boat1Meta");
 const boat2MetaEl = document.getElementById("boat2Meta");
+
 
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
@@ -131,42 +285,84 @@ marker2.innerHTML = buildBoatSVG("#ff6b6b", "#c94848");
 function findRower(id) {
   return rowers.find(r => r.id === id);
 }
-
-function assignedRowerIds() {
-  return new Set([...boats.boat1, ...boats.boat2].filter(Boolean));
+function findCoxswain(id) {
+  return coxswains.find(c => c.id === id);
 }
 
 // ---------- Rendering ----------
 
 function renderRosterList() {
   rowerListEl.innerHTML = "";
-  const assigned = assignedRowerIds();
+  const term = rowerSearchTerm.toLowerCase();
   rowers
-    .filter(r => !assigned.has(r.id))
+    .filter(r => !term || r.name.toLowerCase().includes(term))
     .forEach(r => rowerListEl.appendChild(createRowerCard(r)));
 }
 
-function createRowerCard(rower) {
+function createRowerCard(rower, seatSide, clickable) {
   const li = document.createElement("li");
   li.className = "rower-card";
-  li.draggable = true;
   li.dataset.rowerId = rower.id;
-  li.dataset.rarity = rower.rarity || "unknown";
-  const rs = rarityStyle(rower.rarity);
-  const ovr = computeOVR(rower);
+  const ovr = computeOVR(rower, seatSide);
+  if (seatSide) {
+    const baseOvr = computeOVR(rower);
+    const diff = ovr - baseOvr;
+    if (diff > 0) li.style.setProperty('--ovr-color', '#4ade80');
+    else if (diff < 0) li.style.setProperty('--ovr-color', '#ff6b6b');
+    else li.style.setProperty('--ovr-color', '');
+  }
+  const effRarity = displayRarity(rower);
+  li.dataset.rarity = effRarity === "Unknown" ? "unknown" : effRarity;
+  const rs = rarityStyle(effRarity);
   li.innerHTML = `
     <span class="rc-ovr">${ovr}</span>
     <span class="rower-name">${rower.name}</span>
     <span class="rc-rarity" style="background:${rs.color}">${rs.icon} ${rs.label}</span>
   `;
-  li.addEventListener("dragstart", onDragStart);
-  li.addEventListener("dragend", onDragEnd);
-  li.addEventListener("mouseenter", (e) => showRowerHoverCard(rower, e.currentTarget));
+  if (clickable !== false) {
+    li.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showAssignPopup(rower, 'rower');
+    });
+  }
+  li.addEventListener("mouseenter", (e) => showHoverCard(rower, e.currentTarget, 'rower', seatSide));
   li.addEventListener("mouseleave", hideRowerHoverCard);
   return li;
 }
 
-// ---------- Hover stat card ----------
+// ---------- Coxswain rendering ----------
+
+function renderCoxswainList() {
+  coxswainListEl.innerHTML = "";
+  const term = coxswainSearchTerm.toLowerCase();
+  coxswains
+    .filter(c => !term || c.name.toLowerCase().includes(term))
+    .forEach(c => coxswainListEl.appendChild(createCoxswainCard(c)));
+}
+
+function createCoxswainCard(coxswain, clickable) {
+  const li = document.createElement("li");
+  li.className = "rower-card";
+  li.dataset.coxswainId = coxswain.id;
+  const rs = rarityStyle(coxswain.rarity || "Unknown");
+  li.dataset.rarity = coxswain.rarity || "unknown";
+  li.innerHTML = `
+    <span class="rc-ovr">${coxswain.ovr}</span>
+    <span class="rower-name">${coxswain.name}</span>
+    <span class="rc-rarity" style="background:${rs.color}">${rs.icon} ${rs.label}</span>
+  `;
+  if (clickable !== false) {
+    li.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showAssignPopup(coxswain, 'coxswain');
+    });
+  }
+  li.addEventListener("mouseenter", (e) => showHoverCard(coxswain, e.currentTarget, 'coxswain'));
+  li.addEventListener("mouseleave", hideRowerHoverCard);
+  return li;
+}
+
+// ---------- Universal hover card ----------
 
 let hoverCardEl = null;
 
@@ -181,23 +377,43 @@ function ensureHoverCard() {
 }
 
 const RARITY_STYLES = {
-  "Generational": { color: "#ff2020", label: "Generational", icon: "✦" },
-  "Freak": { color: "#ff9f43", label: "Freak", icon: "◈" },
-  "Pretty Good": { color: "#a359ff", label: "Pretty Good", icon: "◇" },
-  "Mid": { color: "#4ade80", label: "Mid", icon: "◆" },
-  "Noob": { color: "#8fa3b3", label: "Noob", icon: "○" },
+  "Generational": { color: "#ff2020", label: "Generational", icon: "⬢" },
+  "Freak": { color: "#ff9f43", label: "Freak", icon: "★" },
+  "Pretty Good": { color: "#a359ff", label: "Pretty Good", icon: "■" },
+  "Mid": { color: "#4ade80", label: "Mid", icon: "▲" },
+  "Noob": { color: "#8fa3b3", label: "Noob", icon: "●" },
 };
 
 function rarityStyle(rarity) {
   return RARITY_STYLES[rarity] || { color: "#5a6b7c", label: rarity || "Unknown", icon: "?" };
 }
 
-function computeOVR(rower) {
+function rarityFromOVR(ovr) {
+  if (ovr >= 90) return "Generational";
+  if (ovr >= 85) return "Freak";
+  if (ovr >= 80) return "Pretty Good";
+  if (ovr >= 70) return "Mid";
+  return "Noob";
+}
+
+function displayRarity(rower) {
+  if (!rower.rarity) return "Unknown";
+  return rarityFromOVR(computeOVR(rower));
+}
+
+function computeOVR(rower, seatSide) {
   const secs = parseScoreToSeconds(rower.twoK);
   if (!secs) return 0;
   const R2k = 92 - ((secs - 390) / 5) * 3;
   const p = rower.port || 0, s = rower.starboard || 0;
-  const techStars = (2 * Math.max(p, s) + Math.min(p, s)) / 3;
+  let techStars;
+  if (seatSide === 'port') {
+    techStars = p;
+  } else if (seatSide === 'starboard') {
+    techStars = s;
+  } else {
+    techStars = (2 * Math.max(p, s) + Math.min(p, s)) / 3;
+  }
   const RTech = 18 * techStars + 9;
   const splitSec = secs / 4;
   const watts = 2.80 / Math.pow(splitSec / 500, 3);
@@ -225,25 +441,14 @@ function dotStars(value, max = 5) {
   return html;
 }
 
-function showRowerHoverCard(rower, targetEl) {
-  const card = ensureHoverCard();
-  const classText = rower.year != null ? `Class of ${rower.year}` : "--";
-  const twoKText = rower.twoK ?? "--";
-  const weightText = rower.weight != null ? `${rower.weight} lbs` : "--";
-  const rs = rarityStyle(rower.rarity);
+function buildHoverCardHTML(item, itemType, seatSide) {
+  const isCox = itemType === 'coxswain';
+  const effRarity = isCox ? (item.rarity || "Unknown") : displayRarity(item);
+  const rs = rarityStyle(effRarity);
+  const classText = item.year != null ? `Class of ${item.year}` : "--";
 
-  const shapeFA = {
-    heart: "fa-heart",
-    star: "fa-star",
-    triangle: "fa-play",
-    square: "fa-square",
-    circle: "fa-circle",
-  };
-  const particleClip = {
-    triangle: "polygon(50% 0%, 0% 100%, 100% 100%)",
-    square: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
-    circle: "circle(50%)",
-  };
+  const shapeFA = { heart: "fa-heart", star: "fa-star", triangle: "fa-play", square: "fa-square", circle: "fa-circle" };
+  const particleClip = { triangle: "polygon(50% 0%, 0% 100%, 100% 100%)", square: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)", circle: "circle(50%)" };
   const particleCfg = {
     "Generational": { count: 55, sizes: [5, 20], anims: ["hc-rise","hc-rise-drift","hc-rise-spin","hc-rise-pulse"], glow: true, shape: "heart", icon: true },
     "Freak":        { count: 35, sizes: [4, 15], anims: ["hc-rise","hc-rise-drift","hc-rise-spin"], glow: true, shape: "star", icon: true },
@@ -251,27 +456,17 @@ function showRowerHoverCard(rower, targetEl) {
     "Mid":          { count: 12, sizes: [3, 8],  anims: ["hc-rise","hc-rise-drift"], glow: false, shape: "circle", icon: false },
     "Noob":         { count: 5,  sizes: [3, 5],  anims: ["hc-rise"], glow: false, shape: "circle", icon: false },
   };
-  const cfg = particleCfg[rower.rarity] || { count: 0, sizes: [3, 4], anims: ["hc-rise"], glow: false, shape: "circle", icon: false };
-
+  const cfg = particleCfg[effRarity] || { count: 0, sizes: [3, 4], anims: ["hc-rise"], glow: false, shape: "circle", icon: false };
   const genColors = ["#ff2020","#ff3333","#ff4444","#ff5555","#cc0000","#dd1111","#ee2222","#ff1111","#dd2222","#ff6666"];
 
-  card.setAttribute("data-rarity", rower.rarity || "unknown");
   let particles = "";
   for (let i = 0; i < cfg.count; i++) {
     const size = cfg.sizes[0] + Math.random() * (cfg.sizes[1] - cfg.sizes[0]);
     const anim = cfg.anims[Math.floor(Math.random() * cfg.anims.length)];
-    const color = rower.rarity === "Generational"
-      ? genColors[Math.floor(Math.random() * genColors.length)]
-      : rs.color;
-    const shadow = cfg.glow
-      ? `0 0 ${(8 + Math.random() * 24).toFixed(1)}px ${color}, 0 0 ${(20 + Math.random() * 40).toFixed(1)}px ${color}`
-      : `0 0 ${(3 + Math.random() * 6).toFixed(1)}px ${color}`;
+    const color = effRarity === "Generational" ? genColors[Math.floor(Math.random() * genColors.length)] : rs.color;
+    const shadow = cfg.glow ? `0 0 ${(8 + Math.random() * 24).toFixed(1)}px ${color}, 0 0 ${(20 + Math.random() * 40).toFixed(1)}px ${color}` : `0 0 ${(3 + Math.random() * 6).toFixed(1)}px ${color}`;
     let shape;
-    if (cfg.shape === "mixed") {
-      shape = Math.random() > 0.5 ? "triangle" : "square";
-    } else {
-      shape = cfg.shape;
-    }
+    if (cfg.shape === "mixed") { shape = Math.random() > 0.5 ? "triangle" : "square"; } else { shape = cfg.shape; }
     const l = (2 + Math.random() * 96).toFixed(1);
     const t = (85 + Math.random() * 15).toFixed(1);
     const dur = (3 + Math.random() * 5).toFixed(1);
@@ -279,87 +474,57 @@ function showRowerHoverCard(rower, targetEl) {
     const blur = Math.random() > 0.7 ? `filter:blur(${(0.5 + Math.random() * 1.2).toFixed(1)}px);` : "";
     if (cfg.icon) {
       const fa = shapeFA[shape] || "fa-circle";
-      particles += `<i class="hc-particle fa-solid ${fa}" style="
-        left:${l}%;top:${t}%;
-        font-size:${size.toFixed(1)}px;line-height:1;
-        animation:${anim} ${dur}s linear ${delay}s infinite;
-        color:${color};
-        text-shadow:${shadow};
-        ${blur}
-      "></i>`;
+      particles += `<i class="hc-particle fa-solid ${fa}" style="left:${l}%;top:${t}%;font-size:${size.toFixed(1)}px;line-height:1;animation:${anim} ${dur}s linear ${delay}s infinite;color:${color};text-shadow:${shadow};${blur}"></i>`;
     } else {
       const clip = particleClip[shape] || "circle(50%)";
-      particles += `<span class="hc-particle" style="
-        left:${l}%;top:${t}%;
-        width:${size.toFixed(1)}px;height:${size.toFixed(1)}px;
-        clip-path:${clip};
-        animation:${anim} ${dur}s linear ${delay}s infinite;
-        background:${color};
-        box-shadow:${shadow};
-        ${blur}
-      "></span>`;
+      particles += `<span class="hc-particle" style="left:${l}%;top:${t}%;width:${size.toFixed(1)}px;height:${size.toFixed(1)}px;clip-path:${clip};animation:${anim} ${dur}s linear ${delay}s infinite;background:${color};box-shadow:${shadow};${blur}"></span>`;
     }
   }
 
-  card.innerHTML = `
+  let statsHtml = isCox ? `
+    <div class="hc-cell"><span class="hc-cell-label">OVR</span><span class="hc-cell-value">${item.ovr}</span></div>
+    <div class="hc-cell"><span class="hc-cell-label">Weight</span><span class="hc-cell-value">${item.weight || "--"} lbs</span></div>
+    <div class="hc-cell"><span class="hc-cell-label">Class</span><span class="hc-cell-value">${classText}</span></div>
+  ` : `
+    <div class="hc-cell"><span class="hc-cell-label">2k</span><span class="hc-cell-value">${item.twoK ?? "--"}</span></div>
+    <div class="hc-cell"><span class="hc-cell-label hc-power-label">Power</span><span class="hc-cell-value hc-power">${item.power}W</span></div>
+    <div class="hc-cell"><span class="hc-cell-label">Class</span><span class="hc-cell-value">${classText}</span></div>
+    <div class="hc-cell"><span class="hc-cell-label">Weight</span><span class="hc-cell-value">${item.weight || "--"} lbs</span></div>
+  `;
+
+  let dotsHtml = isCox ? `
+    <div class="hc-dot-row"><span class="hc-dot-label">Motivation</span><span class="hc-dot-stars">${dotStars(item.motivation)}</span><span class="hc-dot-val">${item.motivation.toFixed(1)}</span></div>
+    <div class="hc-dot-row"><span class="hc-dot-label">Strategy</span><span class="hc-dot-stars">${dotStars(item.strategy)}</span><span class="hc-dot-val">${item.strategy.toFixed(1)}</span></div>
+    <div class="hc-dot-row"><span class="hc-dot-label">Tech Calls</span><span class="hc-dot-stars">${dotStars(item.tech_calls)}</span><span class="hc-dot-val">${item.tech_calls.toFixed(1)}</span></div>
+    <div class="hc-dot-row"><span class="hc-dot-label">Steering</span><span class="hc-dot-stars">${dotStars(item.steering)}</span><span class="hc-dot-val">${item.steering.toFixed(1)}</span></div>
+  ` : `
+    <div class="hc-dot-row"><span class="hc-dot-label">Port</span><span class="hc-dot-stars">${dotStars(item.port || 0)}</span><span class="hc-dot-val">${(item.port || 0).toFixed(1)}</span></div>
+    <div class="hc-dot-row"><span class="hc-dot-label">Star</span><span class="hc-dot-stars">${dotStars(item.starboard || 0)}</span><span class="hc-dot-val">${(item.starboard || 0).toFixed(1)}</span></div>
+    <div class="hc-dot-row"><span class="hc-dot-label">Ment</span><span class="hc-dot-stars">${dotStars(item.mentality || 0)}</span><span class="hc-dot-val">${(item.mentality || 0).toFixed(1)}</span></div>
+  `;
+
+  return `
     <div class="hc-pattern"></div>
     <div class="hc-particles">${particles}</div>
-    <div class="hc-top">
-      <span class="hc-name">${rower.name}</span>
-    </div>
-    <div class="hc-grid">
-      <div class="hc-cell">
-        <span class="hc-cell-label">2k</span>
-        <span class="hc-cell-value">${twoKText}</span>
-      </div>
-      <div class="hc-cell">
-        <span class="hc-cell-label hc-power-label">Power</span>
-        <span class="hc-cell-value hc-power">${rower.power}W</span>
-      </div>
-      <div class="hc-cell">
-        <span class="hc-cell-label">Class</span>
-        <span class="hc-cell-value">${classText}</span>
-      </div>
-      <div class="hc-cell">
-        <span class="hc-cell-label">Weight</span>
-        <span class="hc-cell-value">${weightText}</span>
-      </div>
-    </div>
-    <div class="hc-dots">
-      <div class="hc-dot-row">
-        <span class="hc-dot-label">Port</span>
-        <span class="hc-dot-stars">${dotStars(rower.port || 0)}</span>
-        <span class="hc-dot-val">${(rower.port || 0).toFixed(1)}</span>
-      </div>
-      <div class="hc-dot-row">
-        <span class="hc-dot-label">Star</span>
-        <span class="hc-dot-stars">${dotStars(rower.starboard || 0)}</span>
-        <span class="hc-dot-val">${(rower.starboard || 0).toFixed(1)}</span>
-      </div>
-      <div class="hc-dot-row">
-        <span class="hc-dot-label">Ment</span>
-        <span class="hc-dot-stars">${dotStars(rower.mentality || 0)}</span>
-        <span class="hc-dot-val">${(rower.mentality || 0).toFixed(1)}</span>
-      </div>
-    </div>
-    <div class="hc-footer">
-      <span class="hc-rarity" style="background:${rs.color}">${rs.icon} ${rs.label}</span>
-    </div>
+    <div class="hc-top"><span class="hc-name">${item.name}</span></div>
+    <div class="hc-grid">${statsHtml}</div>
+    <div class="hc-dots">${dotsHtml}</div>
+    <div class="hc-footer"><span class="hc-rarity" style="background:${rs.color}">${rs.icon} ${rs.label}</span></div>
   `;
+}
+
+function showHoverCard(item, targetEl, itemType, seatSide) {
+  const card = ensureHoverCard();
+  const isCox = itemType === 'coxswain';
+  const effRarity = isCox ? (item.rarity || "Unknown") : displayRarity(item);
+  card.setAttribute("data-rarity", effRarity === "Unknown" ? "unknown" : effRarity);
+  card.innerHTML = buildHoverCardHTML(item, itemType, seatSide);
   card.style.display = "block";
   card.style.animation = "none";
   void card.offsetWidth;
   card.style.animation = "hcFadeIn 0.2s ease-out forwards";
   positionHoverCardNear(targetEl);
 }
-
-function positionRowerHoverCard(e) {
-  if (hoverCardEl && hoverCardEl.style.display === "block") {
-    positionHoverCardAtPointer(e);
-  }
-}
-
-let _justDropped = null;
 
 function positionHoverCardNear(targetEl) {
   const rect = targetEl.getBoundingClientRect();
@@ -373,22 +538,6 @@ function positionHoverCardNear(targetEl) {
   card.style.top = `${rect.top + window.scrollY}px`;
 }
 
-function positionHoverCardAtPointer(e) {
-  const card = ensureHoverCard();
-  const margin = 14;
-  let left = e.pageX + margin;
-  let top = e.pageY + margin;
-  const cardRect = card.getBoundingClientRect();
-  if (left + cardRect.width > window.innerWidth + window.scrollX) {
-    left = e.pageX - cardRect.width - margin;
-  }
-  if (top + cardRect.height > window.innerHeight + window.scrollY) {
-    top = e.pageY - cardRect.height - margin;
-  }
-  card.style.left = `${left}px`;
-  card.style.top = `${top}px`;
-}
-
 function hideRowerHoverCard() {
   if (hoverCardEl) {
     hoverCardEl.style.display = "none";
@@ -400,6 +549,48 @@ function renderBoat(boatKey, containerEl, metaEl) {
   const seats = boats[boatKey];
   let filledCount = 0;
 
+  // Coxswain seat-row
+  const coxRow = document.createElement("div");
+  coxRow.className = "seat-row";
+  const coxLabel = document.createElement("span");
+  coxLabel.className = "seat-label";
+  coxLabel.textContent = "Coxswain";
+  coxRow.appendChild(coxLabel);
+  const coxSlot = document.createElement("li");
+  coxSlot.className = "seat-slot";
+  coxSlot.dataset.boat = boatKey;
+  coxSlot.dataset.seatIndex = -1;
+  const coxId = boatCoxswains[boatKey];
+  if (coxId) {
+    coxSlot.classList.add("filled");
+    const cox = findCoxswain(coxId);
+    if (cox) {
+      const card = createCoxswainCard(cox, false);
+      coxSlot.appendChild(card);
+    }
+  } else {
+    const ph = document.createElement("span");
+    ph.textContent = "Empty seat";
+    ph.style.padding = "0 12px";
+    ph.style.opacity = "0.4";
+    coxSlot.appendChild(ph);
+  }
+  if (coxId) {
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "slot-remove";
+    removeBtn.innerHTML = "&times;";
+    removeBtn.title = "Remove coxswain";
+    removeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      boatCoxswains[boatKey] = null;
+      renderAll();
+    });
+    coxSlot.appendChild(removeBtn);
+  }
+  coxRow.appendChild(coxSlot);
+  containerEl.appendChild(coxRow);
+
+  // Rower seat-rows
   seats.forEach((rowerId, seatIndex) => {
     const row = document.createElement("div");
     row.className = "seat-row";
@@ -418,12 +609,19 @@ function renderBoat(boatKey, containerEl, metaEl) {
       filledCount++;
       slot.classList.add("filled");
       const rower = findRower(rowerId);
-      const card = createRowerCard(rower);
+      const seatSide = seatIndex % 2 === 0 ? 'port' : 'starboard';
+      const card = createRowerCard(rower, seatSide, false);
       slot.appendChild(card);
-      if (_justDropped && _justDropped.boat === boatKey && _justDropped.seat === seatIndex) {
-        slot.style.animation = "seatDrop 0.4s ease-out";
-        _justDropped = null;
-      }
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "slot-remove";
+      removeBtn.innerHTML = "&times;";
+      removeBtn.title = "Remove rower";
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        boats[boatKey][seatIndex] = null;
+        renderAll();
+      });
+      slot.appendChild(removeBtn);
     } else {
       const placeholder = document.createElement("span");
       placeholder.textContent = "Empty seat";
@@ -431,21 +629,6 @@ function renderBoat(boatKey, containerEl, metaEl) {
       placeholder.style.opacity = "0.4";
       slot.appendChild(placeholder);
     }
-
-    // drop handlers per-seat (allow swapping into a specific seat)
-    slot.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      slot.classList.add("dragover");
-    });
-    slot.addEventListener("dragleave", () => {
-      slot.classList.remove("dragover");
-    });
-    slot.addEventListener("drop", (e) => {
-      e.preventDefault();
-      slot.classList.remove("dragover");
-      _justDropped = { boat: boatKey, seat: seatIndex };
-      handleDrop(boatKey, seatIndex);
-    });
 
     row.appendChild(slot);
     containerEl.appendChild(row);
@@ -461,39 +644,14 @@ function seatLabel(i) {
 
 function renderAll() {
   renderRosterList();
+  renderCoxswainList();
   renderBoat("boat1", boat1SeatsEl, boat1MetaEl);
   renderBoat("boat2", boat2SeatsEl, boat2MetaEl);
+  updateBoatOVR("boat1");
+  updateBoatOVR("boat2");
 }
 
-// ---------- Drag & drop ----------
-
-let draggedRowerId = null;
-
-function onDragStart(e) {
-  draggedRowerId = e.currentTarget.dataset.rowerId;
-  e.currentTarget.classList.add("dragging");
-  hideRowerHoverCard();
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", draggedRowerId);
-}
-
-function onDragEnd(e) {
-  e.currentTarget.classList.remove("dragging");
-  draggedRowerId = null;
-}
-
-function handleDrop(targetBoatKey, targetSeatIndex) {
-  const rowerId = draggedRowerId;
-  if (!rowerId) return;
-
-  // remove rower from wherever it currently is (roster is implicit / no-op)
-  removeRowerFromBoats(rowerId);
-
-  // if target seat occupied, bump that rower back to roster
-  boats[targetBoatKey][targetSeatIndex] = rowerId;
-
-  renderAll();
-}
+// ---------- Helper functions for boat assignment ----------
 
 function removeRowerFromBoats(rowerId) {
   for (const key of ["boat1", "boat2"]) {
@@ -501,21 +659,151 @@ function removeRowerFromBoats(rowerId) {
   }
 }
 
-// roster dropzone: drop = remove from any boat back to roster
-rowerListEl.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  rowerListEl.classList.add("dragover");
-});
-rowerListEl.addEventListener("dragleave", () => {
-  rowerListEl.classList.remove("dragover");
-});
-rowerListEl.addEventListener("drop", (e) => {
-  e.preventDefault();
-  rowerListEl.classList.remove("dragover");
-  if (draggedRowerId) {
-    removeRowerFromBoats(draggedRowerId);
-    renderAll();
+function removeCoxswainFromBoats(coxId) {
+  if (boatCoxswains.boat1 === coxId) boatCoxswains.boat1 = null;
+  if (boatCoxswains.boat2 === coxId) boatCoxswains.boat2 = null;
+}
+
+// ---------- Assignment popup ----------
+
+function buildMedalsHTML(medals) {
+  if (!medals || medals.length === 0) return '<div class="assign-no-medals">No medals</div>';
+  return medals.map((m, i) => {
+    const cls = m.placement === "Gold" ? "medal-place-gold" : m.placement === "Silver" ? "medal-place-silver" : "medal-place-bronze";
+    const icon = m.placement === "Gold" ? '<i class="fa-solid fa-medal"></i>' : m.placement === "Silver" ? '<i class="fa-solid fa-medal"></i>' : '<i class="fa-solid fa-medal"></i>';
+    return `<div class="assign-medal-entry" style="animation-delay:${0.15 + i * 0.06}s">
+      <span class="medal-year">${m.year}</span>
+      <span class="medal-boat">${m.boat}</span>
+      <span class="medal-place ${cls}">${icon} ${m.placement}</span>
+    </div>`;
+  }).join("");
+}
+
+function showAssignPopup(item, type) {
+  assignPopupData = { item, type };
+  const popupEl = document.getElementById("assignPopup");
+  popupEl.style.display = "flex";
+  const isCox = type === 'coxswain';
+  const titleEl = document.getElementById("assignPopupTitle");
+  const icon = isCox ? '<i class="fa-solid fa-ear-deaf"></i>' : '<i class="fa-solid fa-person"></i>';
+  titleEl.innerHTML = `${icon} ${item.name}`;
+  renderAssignPopup();
+}
+
+function closeAssignPopup() {
+  assignPopupData = null;
+  document.getElementById("assignPopup").style.display = "none";
+}
+
+function renderAssignPopup() {
+  const { item, type } = assignPopupData;
+  const body = document.getElementById("assignPopupBody");
+  const isCox = type === 'coxswain';
+
+  const effRarity = isCox ? (item.rarity || "Unknown") : displayRarity(item);
+  const rarityAttr = effRarity === "Unknown" ? "unknown" : effRarity;
+  const hoverHTML = buildHoverCardHTML(item, type);
+  const medalsHTML = buildMedalsHTML(item.medals);
+
+  // Left column: hover card + medals
+  const leftCol = `
+    <div class="assign-left-col">
+      <div class="rower-hover-card popup-card-static" data-rarity="${rarityAttr}">${hoverHTML}</div>
+      <div class="assign-medals">
+        <div class="assign-medals-title"><i class="fa-solid fa-trophy"></i> State Medals</div>
+        <div class="assign-medals-list">${medalsHTML}</div>
+      </div>
+    </div>
+  `;
+
+  // Right column: boat panels
+  let rightCol = `<div class="assign-right-col${isCox ? ' coxswain-mode' : ''}">`;
+
+  if (type === 'rower') {
+    for (const key of ["boat1", "boat2"]) {
+      const boatName = key === "boat1" ? "Richard Paul" : "The Challenger";
+      const dotClass = key === "boat1" ? "dot-1" : "dot-2";
+      const color = key === "boat1" ? "#3fb6ff" : "#ff6b6b";
+      rightCol += `<div class="assign-boat-panel">
+        <div class="assign-boat-panel-header" style="color:${color}"><span class="boat-dot ${dotClass}"></span> ${boatName}</div>
+        <div class="assign-boat-panel-seats">`;
+      boats[key].forEach((currentId, i) => {
+        const label = seatLabel(i);
+        const side = i % 2 === 0 ? "Port" : "Starboard";
+        const current = currentId ? findRower(currentId) : null;
+        const isCurrent = currentId === item.id;
+        const nameDisplay = current ? current.name : "Empty";
+        const nameClass = current ? "seat-name-popup" : "seat-name-popup empty";
+        const currentBadge = isCurrent ? ' <span class="seat-current-badge"><i class="fa-solid fa-check"></i> Current</span>' : '';
+        rightCol += `<button class="assign-seat-btn${isCurrent ? ' current-seat' : ''}" data-boat="${key}" data-seat="${i}">
+          <span class="seat-label-popup">${label}</span>
+          <span class="seat-side-popup">${side}</span>
+          <span class="${nameClass}">${nameDisplay}</span>
+          ${currentBadge}
+        </button>`;
+      });
+      rightCol += `</div></div>`;
+    }
+  } else {
+    for (const key of ["boat1", "boat2"]) {
+      const boatName = key === "boat1" ? "Richard Paul" : "The Challenger";
+      const dotClass = key === "boat1" ? "dot-1" : "dot-2";
+      const color = key === "boat1" ? "#3fb6ff" : "#ff6b6b";
+      const currentId = boatCoxswains[key];
+      const isCurrent = currentId === item.id;
+      const nameDisplay = currentId ? (findCoxswain(currentId)?.name || "None") : "None";
+      const currentBadge = isCurrent ? ' <span class="seat-current-badge"><i class="fa-solid fa-check"></i> Current</span>' : '';
+      rightCol += `<div class="assign-boat-panel">
+        <div class="assign-boat-panel-header" style="color:${color}"><span class="boat-dot ${dotClass}"></span> ${boatName}</div>
+        <div class="assign-boat-panel-seats">
+          <button class="assign-seat-btn${isCurrent ? ' current-seat' : ''}" data-boat="${key}" data-seat="-1">
+            <span class="seat-label-popup"><i class="fa-solid fa-ear-deaf"></i></span>
+            <span class="seat-side-popup">Coxswain</span>
+            <span class="${nameDisplay === 'None' ? 'seat-name-popup empty' : 'seat-name-popup'}">${nameDisplay}</span>
+            ${currentBadge}
+          </button>
+        </div>
+      </div>`;
+    }
   }
+
+  rightCol += `</div>`;
+
+  body.innerHTML = leftCol + rightCol;
+
+  body.querySelectorAll(".assign-seat-btn[data-boat]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const boatKey = btn.dataset.boat;
+      const seatIndex = parseInt(btn.dataset.seat);
+      if (type === 'rower') {
+        removeRowerFromBoats(item.id);
+        boats[boatKey][seatIndex] = item.id;
+      } else {
+        removeCoxswainFromBoats(item.id);
+        boatCoxswains[boatKey] = item.id;
+      }
+      renderAll();
+      closeAssignPopup();
+    });
+  });
+}
+
+// ---------- Search ----------
+
+document.getElementById("rowerSearch").addEventListener("input", (e) => {
+  rowerSearchTerm = e.target.value;
+  renderRosterList();
+});
+document.getElementById("coxswainSearch").addEventListener("input", (e) => {
+  coxswainSearchTerm = e.target.value;
+  renderCoxswainList();
+});
+
+// ---------- Popup close ----------
+
+document.getElementById("assignPopupClose").addEventListener("click", closeAssignPopup);
+document.getElementById("assignPopup").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) closeAssignPopup();
 });
 
 // ---------- Telemetry (static, pre-race) ----------
@@ -531,7 +819,6 @@ function buildChart(canvasId, lineColor, fillColor) {
   return new Chart(document.getElementById(canvasId).getContext("2d"), {
     type: "line",
     data: {
-      labels: Array.from({ length: 21 }, (_, i) => `${i * 5}%`),
       datasets: [{
         label: "Watts",
         data: [],
@@ -542,7 +829,7 @@ function buildChart(canvasId, lineColor, fillColor) {
         pointRadius: 0,
         pointHoverRadius: 4,
         borderWidth: 2.5,
-        tension: 0.3,
+        tension: 0.1,
         fill: true,
         spanGaps: false,
       }],
@@ -551,10 +838,15 @@ function buildChart(canvasId, lineColor, fillColor) {
       animation: false,
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { left: 10, right: 10 } },
       scales: {
         x: {
-          title: { display: true, text: "drive %", color: "#8fa3b3" },
-          ticks: { color: "#8fa3b3", maxTicksLimit: 11 },
+          type: 'linear',
+          reverse: true,
+          min: -35,
+          max: 60,
+          title: { display: true, text: "angle", color: "#8fa3b3" },
+          ticks: { color: "#8fa3b3", stepSize: 5, maxTicksLimit: 25, callback: v => `${v}°` },
           grid: { color: "#1f2c3a" },
         },
         y: {
@@ -562,6 +854,7 @@ function buildChart(canvasId, lineColor, fillColor) {
           ticks: { color: "#8fa3b3" },
           grid: { color: "#1f2c3a" },
           beginAtZero: true,
+          max: 2000,
         },
       },
       plugins: {
@@ -574,19 +867,40 @@ function buildChart(canvasId, lineColor, fillColor) {
 function initChart() {
   speedChart1 = buildChart("speedChart1", "#3fb6ff", "rgba(63,182,255,0.1)");
   speedChart2 = buildChart("speedChart2", "#ff6b6b", "rgba(255,107,107,0.1)");
+
+  new ResizeObserver(() => {
+    speedChart1?.resize();
+    speedChart2?.resize();
+  }).observe(document.getElementById('panel-telemetry'));
 }
 
 let simulation = null;
 let rafId = null;
 let lastFrameTime = null;
 let lastTelemetryUpdate = 0;
+let prevStrokeCount1 = 0;
+let prevStrokeCount2 = 0;
+let prevInWater1 = false;
+let prevInWater2 = false;
+let hasCatch1 = false;
+let hasCatch2 = false;
 
 function resetRaceState() {
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   if (simulation) simulation.reset();
   lastFrameTime = null;
+  prevStrokeCount1 = 0;
+  prevStrokeCount2 = 0;
+  prevInWater1 = false;
+  prevInWater2 = false;
+  hasCatch1 = false;
+  hasCatch2 = false;
   marker1.style.left = "0%";
+  marker1.style.setProperty('--steer-y', '0px');
+  marker1.style.setProperty('--steer-angle', '0deg');
   marker2.style.left = "0%";
+  marker2.style.setProperty('--steer-y', '0px');
+  marker2.style.setProperty('--steer-angle', '0deg');
   renderOarStroke(marker1, 0);
   renderOarStroke(marker2, 0);
   document.getElementById("rt1-body").innerHTML = "";
@@ -607,12 +921,20 @@ function resetRaceState() {
   raceStatusEl.className = "race-status";
   startBtn.disabled = false;
   stopBtn.disabled = true;
-  stopBtn.textContent = "⏸ Pause";
+  stopBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
 }
 
 function startRace() {
   if (crewSize("boat1") === 0 && crewSize("boat2") === 0) {
     alert("Assign at least one rower to a boat before starting the race.");
+    return;
+  }
+  if (crewSize("boat1") > 0 && !boatCoxswains.boat1) {
+    alert("Richard Paul needs a coxswain before the race can start.");
+    return;
+  }
+  if (crewSize("boat2") > 0 && !boatCoxswains.boat2) {
+    alert("The Challenger needs a coxswain before the race can start.");
     return;
   }
   const b1rowers = boats.boat1.map((id, i) => {
@@ -629,7 +951,9 @@ function startRace() {
     r._seatSide = i % 2 === 0 ? 'port' : 'starboard';
     return r;
   }).filter(Boolean);
-  simulation = new RaceSimulation(b1rowers, b2rowers);
+  const b1cox = boatCoxswains.boat1 ? { ...findCoxswain(boatCoxswains.boat1) } : null;
+  const b2cox = boatCoxswains.boat2 ? { ...findCoxswain(boatCoxswains.boat2) } : null;
+  simulation = new RaceSimulation(b1rowers, b2rowers, b1cox, b2cox);
   simulation.start();
   startBtn.disabled = true;
   stopBtn.disabled = false;
@@ -639,17 +963,51 @@ function startRace() {
   rafId = requestAnimationFrame(tickRace);
 }
 
-function pauseRace() {
-  if (simulation) simulation.pause();
-  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-  lastFrameTime = null;
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-  raceStatusEl.textContent = "Paused";
+function togglePause() {
+  if (!simulation) return;
+  if (simulation.running) {
+    simulation.pause();
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    lastFrameTime = null;
+    startBtn.disabled = false;
+    stopBtn.innerHTML = '<i class="fa-solid fa-play"></i> Resume';
+    raceStatusEl.textContent = "Paused";
+  } else {
+    simulation.start();
+    lastFrameTime = null;
+    rafId = requestAnimationFrame(tickRace);
+    startBtn.disabled = true;
+    stopBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+    raceStatusEl.textContent = "Racing...";
+    raceStatusEl.className = "race-status running";
+  }
 }
 
 // Renders the oar stroke animation for a boat marker based on its stroke
 // phase (0-1, one full cycle = catch -> drive -> finish -> recovery).
+function spawnSplash(markerEl, trackEl) {
+  const trackRect = trackEl.getBoundingClientRect();
+  const blades = markerEl.querySelectorAll(".oar-blade");
+  if (blades.length === 0) return;
+  blades.forEach(blade => {
+    const r = blade.getBoundingClientRect();
+    const cx = (r.left - trackRect.left) + r.width / 2;
+    const cy = (r.top - trackRect.top) + r.height / 2;
+    const count = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement("span");
+      p.className = "splash-particle";
+      const xOff = -(Math.random() * 12 + 4);
+      const yOff = (Math.random() - 0.5) * 16;
+      const size = 1.5 + Math.random() * 3;
+      const dur = 0.2 + Math.random() * 0.3;
+      p.style.cssText = `left:${cx + (Math.random() - 0.5) * 10}px;top:${cy + yOff * 0.5}px;--dx:${xOff}px;--dy:${yOff}px;width:${size}px;height:${size}px;animation-duration:${dur}s`;
+      trackEl.appendChild(p);
+      setTimeout(() => p.remove(), dur * 1000 + 50);
+    }
+  });
+}
+
 function renderOarStroke(markerEl, phase) {
   const oarGroups = markerEl.querySelectorAll(".oar-group");
   const drivePortion = 0.35;
@@ -662,7 +1020,7 @@ function renderOarStroke(markerEl, phase) {
     sweepT = 1 - t;
     inWater = false;
   }
-  const angle = -30 + sweepT * 60;
+  const angle = -35 + sweepT * 60;
 
   oarGroups.forEach((g) => {
     const side = Number(g.dataset.side);
@@ -675,7 +1033,7 @@ function tickRace(now) {
   if (!simulation || !simulation.running) return;
 
   if (lastFrameTime === null) lastFrameTime = now;
-  const realDt = (now - lastFrameTime) / 1000;
+  const realDt = Math.min((now - lastFrameTime) / 1000, 0.05);
   lastFrameTime = now;
   lastTelemetryUpdate += realDt;
 
@@ -688,7 +1046,28 @@ function tickRace(now) {
   updateChart(s);
   updateRowerTelemetry(s);
   updateTimeDisplay(s);
-  updateSplitDisplay(s);
+
+  if (s.boat1.strokeCount !== prevStrokeCount1) {
+    prevStrokeCount1 = s.boat1.strokeCount;
+    document.getElementById("t1-split").textContent = formatSplit(s.boat1.speed);
+  }
+  if (s.boat2.strokeCount !== prevStrokeCount2) {
+    prevStrokeCount2 = s.boat2.strokeCount;
+    document.getElementById("t2-split").textContent = formatSplit(s.boat2.speed);
+  }
+
+  const inWater1 = s.boat1.strokePhase < 0.35;
+  if (inWater1 !== prevInWater1) {
+    if (hasCatch1) spawnSplash(marker1, lane1Track);
+    else hasCatch1 = true;
+    prevInWater1 = inWater1;
+  }
+  const inWater2 = s.boat2.strokePhase < 0.35;
+  if (inWater2 !== prevInWater2) {
+    if (hasCatch2) spawnSplash(marker2, lane2Track);
+    else hasCatch2 = true;
+    prevInWater2 = inWater2;
+  }
 
   if (lastTelemetryUpdate >= 0.2) {
     lastTelemetryUpdate = 0;
@@ -709,6 +1088,7 @@ function finishRace() {
   lastFrameTime = null;
   startBtn.disabled = false;
   stopBtn.disabled = true;
+  stopBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
 
   const s = simulation ? simulation.getState() : null;
   let msg = "Finished";
@@ -716,14 +1096,14 @@ function finishRace() {
     const t1 = s.boat1.finishDisplayTime;
     const t2 = s.boat2.finishDisplayTime;
     if (t1 !== null && t2 !== null) {
-      msg = t1 < t2 ? `🏆 Boat 1 wins (${formatRealTime(t1)})` : (t2 < t1 ? `🏆 Boat 2 wins (${formatRealTime(t2)})` : "Photo finish - tie!");
+      msg = t1 < t2 ? `<i class="fa-solid fa-trophy"></i> Richard Paul wins (${formatRealTime(t1)})` : (t2 < t1 ? `<i class="fa-solid fa-trophy"></i> The Challenger wins (${formatRealTime(t2)})` : "Photo finish - tie!");
     } else if (t1 !== null) {
-      msg = "🏆 Boat 1 wins!";
+      msg = '<i class="fa-solid fa-trophy"></i> Richard Paul wins!';
     } else if (t2 !== null) {
-      msg = "🏆 Boat 2 wins!";
+      msg = '<i class="fa-solid fa-trophy"></i> The Challenger wins!';
     }
   }
-  raceStatusEl.textContent = msg;
+  raceStatusEl.innerHTML = msg;
   raceStatusEl.className = "race-status finished";
 }
 
@@ -754,12 +1134,6 @@ function getBowFinishPct() {
   return Math.min(100, Math.max(0, 100 * (finishLeft - bowOffset) / (trackWidth - 92)));
 }
 
-function updateSplitDisplay(state) {
-  if (!state) return;
-  document.getElementById("t1-split").textContent = formatSplit(state.boat1.speed);
-  document.getElementById("t2-split").textContent = formatSplit(state.boat2.speed);
-}
-
 function updateDistanceSpeedDisplay(state) {
   if (!state) return;
   document.getElementById("t1-dist").textContent = Math.ceil(state.boat1.displayDistance) + " m";
@@ -775,6 +1149,8 @@ function updateTimeDisplay(state) {
   document.getElementById("t2-time").textContent = formatRealTime(state.boat2.finishDisplayTime !== null ? state.boat2.finishDisplayTime : dt);
   document.getElementById("t1-rate").textContent = (state.boat1.strokeRate || 0) + " spm";
   document.getElementById("t2-rate").textContent = (state.boat2.strokeRate || 0) + " spm";
+  document.getElementById("t1-steer").textContent = ((state.boat1.headingAngle || 0) * (180 / Math.PI)).toFixed(1) + "°";
+  document.getElementById("t2-steer").textContent = ((state.boat2.headingAngle || 0) * (180 / Math.PI)).toFixed(1) + "°";
 }
 
 function updateCourseMarkers(state) {
@@ -784,6 +1160,14 @@ function updateCourseMarkers(state) {
   const boatWidthPx = 92;
   marker1.style.left = `calc(${pct1}% - ${(pct1 / 100) * boatWidthPx}px)`;
   marker2.style.left = `calc(${pct2}% - ${(pct2 / 100) * boatWidthPx}px)`;
+  const yOffset1 = ((state.boat1.centerY || 0) * 8);
+  const yOffset2 = ((state.boat2.centerY || 0) * 8);
+  marker1.style.setProperty('--steer-y', `${yOffset1.toFixed(1)}px`);
+  marker2.style.setProperty('--steer-y', `${yOffset2.toFixed(1)}px`);
+  const angle1 = ((state.boat1.headingAngle || 0) * (180 / Math.PI));
+  const angle2 = ((state.boat2.headingAngle || 0) * (180 / Math.PI));
+  marker1.style.setProperty('--steer-angle', `${angle1.toFixed(1)}deg`);
+  marker2.style.setProperty('--steer-angle', `${angle2.toFixed(1)}deg`);
 }
 
 function updateRowerTelemetry(state) {
@@ -797,10 +1181,12 @@ function updateRowerTelemetry(state) {
     const avgTech = data.reduce((s, r) => s + r.baseTech, 0) / data.length;
     const avgMod = data.reduce((s, r) => s + r.techMod, 0) / data.length;
     const avgEffTech = data.reduce((s, r) => s + r.effTech, 0) / data.length;
+    const avgWeight = data.reduce((s, r) => s + (r.weight || 0), 0) / data.length;
     const modClass = avgMod >= 0 ? "rt-tech-pos" : "rt-tech-neg";
 
     const avgRow = `<tr class="rt-avg-row">
       <td>Avg</td><td></td>
+      <td>${avgWeight.toFixed(1)}</td>
       <td>${avgPow.toFixed(1)}</td>
       <td>${avgEffPow.toFixed(1)}</td>
       <td>${avgTech.toFixed(2)}</td>
@@ -813,6 +1199,7 @@ function updateRowerTelemetry(state) {
       return `<tr>
         <td>${seatLabel(rd.seatIdx)}</td>
         <td>${rd.name}</td>
+        <td>${rd.weight || 0}</td>
         <td>${rd.basePower}</td>
         <td>${rd.effPower}</td>
         <td>${rd.baseTech}</td>
@@ -834,8 +1221,15 @@ function updateChart(state) {
 // ---------- Event wiring ----------
 
 startBtn.addEventListener("click", startRace);
-stopBtn.addEventListener("click", pauseRace);
+stopBtn.addEventListener("click", togglePause);
 resetBtn.addEventListener("click", resetRaceState);
+
+document.querySelectorAll(".btn-lineup").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const boatKey = btn.dataset.boat;
+    showLineupPopup(boatKey);
+  });
+});
 
 // ---------- Init ----------
 
@@ -853,6 +1247,8 @@ function seedDefaultBoats() {
 
 function init() {
   loadRowers();
+  loadCoxswains();
+  loadLineups();
   seedDefaultBoats();
   renderAll();
   initChart();

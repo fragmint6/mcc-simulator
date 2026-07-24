@@ -6,9 +6,54 @@
 
 A race is 750 m internally. All displayed values (time, distance) are multiplied by 2, so the race appears as 1500 m. The simulation advances in discrete time steps via `tick(dt)`, where `dt` is simulation-seconds per frame (typically `realDt × speedMultiplier`).
 
-## Stroke Rate Profile
+## Physics Model
 
-Only hardcoded values in the engine. Rates are per-stroke (not per-distance), except the sprint which triggers by distance fraction.
+The engine uses a **continuous physics model** where speed varies every frame. Two forces act on the boat at all times: **quadratic water drag** (always decelerating) and **stroke impulse** (accelerating during the drive phase only).
+
+### Water Drag (always active)
+
+Quadratic drag proportional to `v²` — realistic for water:
+
+```
+dragDecel = 0.008 × speed²
+speed -= dragDecel × dt
+```
+
+- Between strokes, drag causes a gentle deceleration (a few percent per stroke)
+- At high speed the effect is slightly stronger, at low speed weaker
+
+### Stroke Impulse (active during drive phase, 0–35% of stroke cycle)
+
+Each stroke delivers an impulse that accelerates the boat. The impulse is computed at stroke completion and applied gradually over the drive phase:
+
+```
+driveDuration = 0.35 / (strokeRate / 60)
+massFactor = 1364 / (totalCrewWeight + 100)
+impulse = totalWatts × techFactor × rateFactor × driveDuration × 0.00027 × massFactor
+impulseRate = impulse / driveDuration
+speed += impulseRate × dt    (applied each tick during drive)
+```
+
+Where:
+- `techFactor = 0.85 + 0.03 × avgTech` — higher technique = more efficient force transfer
+- `rateFactor = 0.70 + 0.0075 × strokeRate` — higher rates produce more force per stroke
+- `massFactor` — normalizes total boat weight (crew + 100 lb shell) against a reference 1364 lb (8 × 158 lb avg crew + shell), then blended 60% toward 1.0 so weight has a noticeable but mild effect. Heavier crews accelerate slightly less per watt, lighter crews slightly more.
+
+The impulse is spread evenly across the drive phase so the boat accelerates smoothly through each stroke.
+
+### Result: Speed is never static
+
+- **During drive**: Stroke impulse accelerates the boat against drag
+- **During recovery**: Only drag acts — speed smoothly decays
+- **Net effect**: Speed oscillates within each stroke cycle (surge during drive, glide during recovery), with the overall trend determined by crew power, technique, and stroke rate
+
+The displayed speed updates every frame, and split time reflects the instantaneous speed.
+
+### First Stroke Initialization
+
+On the first tick, the engine pre-computes the first stroke's impulse (using the crew's base power × 1.2 at 20 spm) so the boat starts accelerating immediately with no dead stop.
+
+## Stroke Rate Profile
 
 | Strokes | Rate (spm) |
 |---------|-----------|
@@ -18,9 +63,9 @@ Only hardcoded values in the engine. Rates are per-stroke (not per-distance), ex
 | 3       | 38        |
 | 4       | 40        |
 | 5+      | 36        |
-| last 1/5th | 38     |
+| last 1/5th (≥600m) | 38 |
 
-Rates have a ±1 spm random variation per stroke (`(Math.random()-0.5)*2`). Stroke rate is set at stroke completion and stays constant within the stroke.
+Rates have ±1 spm random variation. Stroke rate is set at stroke completion and stays constant within the stroke.
 
 ## Per-Rower Output (each stroke)
 
@@ -30,76 +75,38 @@ effPower = round(basePower × phaseMultiplier × decayPower + wattVariance)
 ```
 - `wattVariance` = uniform in [-25, +25] W
 - `phaseMultiplier` depends on race phase:
-  - **Start** (stroke < 5): 1.20 (+20%)
-  - **Sprint** (distance ≥ 600 m / 80%): 1.20 (+20%)
-  - **Middle**: `0.85 + 0.03 × mentality` (clamped to [0, 5])
-    - Mentality 0 → 0.85 (15% drop)
-    - Mentality 5 → 1.00 (no drop)
+  - **Start** (stroke < 5): 1.20
+  - **Sprint** (distance ≥ 80%): 1.20
+  - **Middle**: `0.85 + 0.03 × mentality` (clamped [0, 5])
 
 ### Technique
 ```
-baseTech   = max(rower.port, rower.starboard)         // [0, 5]
+baseTech   = rower.port or starboard  // [0, 5]
 effTech    = clamp(baseTech × decayTech + techVariance, 0.5, 5.0)
 ```
-- `techVariance` = uniform in [-0.5, +0.5]
+- `techVariance` = uniform in [-0.35, +0.35]
 
 ### Fatigue / Decay
-As the race progresses, power and technique decay linearly. Mentality reduces decay.
 ```
 raceFrac   = min(1, distanceFraction)
 decayPower = 1 - raceFrac × 0.15 × (1 - mentality / 5)
 decayTech  = 1 - raceFrac × 0.12 × (1 - mentality / 5)
 ```
-At finish (raceFrac = 1):
-- Mentality 0: power −15%, technique −12%
-- Mentality 5: no decay
-
-## Boat Speed
-
-Computed once per stroke completion from crew aggregates:
-```
-rawSpeed    = cbrt(totalWatts) × 0.48
-techFactor  = 0.85 + 0.03 × avgTech
-rateFactor  = 0.70 + 0.0075 × strokeRate
-speedNoise  = uniform in [0.985, 1.015]  (±1.5% per stroke)
-speed       = max(0.1, rawSpeed × techFactor × rateFactor × speedNoise)
-split       = 500 / speed   (seconds per 500 m)
-```
-
-### Initial speed (t=0)
-Before the first stroke completes, initial speed is estimated from the crew's base power × 1.2 (start boost) at 20 spm, so the boat moves immediately at race start.
-
-### Distance
-```
-distance += speed × dt
-```
-Capped at 750 m.
+Mentality 5: no decay at finish. Mentality 0: −15% power, −12% technique.
 
 ## Power Curve
 
-Generated at stroke completion as a 21-point array spanning only the **drive portion** of the stroke. The x-axis represents drive % (0–100%). Displayed in real-time: during the drive phase, points build progressively; during recovery, the full drive curve remains visible.
-
-The curve's shape is driven by the boat's **average technique** for that stroke:
-```
-t_skewed   = t^0.65                                // shifts peak left (earlier in drive)
-ideal      = totalWatts × 0.5 × sin^1.6(π × t_skewed)
-noiseLevel = (5 - clamp(avgTech, 0, 5)) / 5        // 0 (perfect) → 1 (worst)
-maxJitter  = noiseLevel × totalWatts × 0.5 × 0.12
-jitter     = uniform[-maxJitter, +maxJitter] × sin(π × t_skewed)
-curve[i]   = max(0, ideal + jitter)
-```
-
-- `t^0.65` skews the curve left (peak earlier in the drive) — typical of high school crews
+Generated at stroke completion as a 21-point array spanning the drive portion. The curve's shape is driven by average technique:
 - High technique (avgTech ≈ 5): near-perfect smooth force curve
-- Low technique (avgTech ≈ 0): erratic, noisy curve with up to ±12% jitter peaking mid-drive
+- Low technique (avgTech ≈ 0): erratic, noisy curve
 
 ## Stroke Cycle
 
 Each boat tracks a `strokePhase` in [0, 1):
-- **0 → 0.35**: Drive (oars in water)
-- **0.35 → 1.0**: Recovery (oars out)
+- **0 → 0.35**: Drive (oars in water, impulse applied)
+- **0.35 → 1.0**: Recovery (oars out, only drag)
 
-Phase advances each frame by `strokeRate / 60 × dt`. When phase wraps past 1, a stroke is counted and all per-stroke computations fire.
+Phase advances each frame by `strokeRate / 60 × dt`. When phase wraps past 1, a stroke is counted and per-stroke computations fire.
 
 ## Public API
 
@@ -111,7 +118,7 @@ Phase advances each frame by `strokeRate / 60 × dt`. When phase wraps past 1, a
 | `pause()` | Pause the race |
 | `reset()` | Reset all state to pre-race |
 | `getState()` | Returns `{ simTime, displayTime, running, finished, boat1, boat2 }` |
-| `getBoatState(key)` | Returns single boat's distance, speed, strokeRate, strokePhase, strokeCount, displayCurve, rowerData, totalWatts, split500, crewSize |
+| `getBoatState(key)` | Returns single boat telemetry |
 
 ## Rower Object Fields (input)
 

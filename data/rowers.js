@@ -8,7 +8,13 @@ const ROWERS_DATA = [
     "port": 4.5,
     "starboard": 4.7,
     "mentality": 4.3,
-    "rarity": "Freak"
+    "rarity": "Generational",
+    "medals": [
+      { "year": 2025, "boat": "1V", "placement": "Silver" },
+      { "year": 2024, "boat": "1V", "placement": "Silver" },
+      { "year": 2023, "boat": "2V", "placement": "Gold" },
+      { "year": 2022, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Gunnar Westland",
@@ -18,7 +24,13 @@ const ROWERS_DATA = [
     "port": 3.9,
     "starboard": 4.1,
     "mentality": 4.4,
-    "rarity": "Pretty Good"
+    "rarity": "Freak",
+    "medals": [
+      { "year": 2025, "boat": "1V", "placement": "Silver" },
+      { "year": 2024, "boat": "1V", "placement": "Silver" },
+      { "year": 2023, "boat": "1V", "placement": "Gold" },
+      { "year": 2022, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Carson Fast",
@@ -28,7 +40,11 @@ const ROWERS_DATA = [
     "port": 4.3,
     "starboard": 3.1,
     "mentality": 4.8,
-    "rarity": "Freak"
+    "rarity": "Generational",
+    "medals": [
+      { "year": 2025, "boat": "1V", "placement": "Silver" },
+      { "year": 2024, "boat": "2V", "placement": "Silver" }
+    ]
   },
   {
     "name": "Henry Terrell",
@@ -38,7 +54,13 @@ const ROWERS_DATA = [
     "port": 3.9,
     "starboard": 3.2,
     "mentality": 4.0,
-    "rarity": "Pretty Good"
+    "rarity": "Pretty Good",
+    "medals": [
+      { "year": 2025, "boat": "1V", "placement": "Silver" },
+      { "year": 2024, "boat": "2V", "placement": "Silver" },
+      { "year": 2023, "boat": "3V", "placement": "Gold" },
+      { "year": 2022, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Matthew Matar",
@@ -48,7 +70,13 @@ const ROWERS_DATA = [
     "port": 2.0,
     "starboard": 4.1,
     "mentality": 3.9,
-    "rarity": "Pretty Good"
+    "rarity": "Pretty Good",
+    "medals": [
+      { "year": 2025, "boat": "1V", "placement": "Silver" },
+      { "year": 2024, "boat": "2V", "placement": "Silver" },
+      { "year": 2023, "boat": "3V", "placement": "Gold" },
+      { "year": 2022, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Adrian Wiklund",
@@ -58,7 +86,8 @@ const ROWERS_DATA = [
     "port": 3.8,
     "starboard": 2.3,
     "mentality": 4.0,
-    "rarity": "Pretty Good"
+    "rarity": "Pretty Good",
+    "medals": []
   },
   {
     "name": "Jack Kirk",
@@ -68,7 +97,13 @@ const ROWERS_DATA = [
     "port": 4.0,
     "starboard": 4.1,
     "mentality": 4.2,
-    "rarity": "Pretty Good"
+    "rarity": "Pretty Good",
+    "medals": [
+      { "year": 2025, "boat": "1V", "placement": "Silver" },
+      { "year": 2024, "boat": "1V", "placement": "Silver" },
+      { "year": 2023, "boat": "2V", "placement": "Gold" },
+      { "year": 2022, "boat": "4V", "placement": "Gold" }
+    ]
   },
   {
     "name": "Andrew Egorin",
@@ -77,28 +112,38 @@ const ROWERS_DATA = [
     "weight": 148.5,
     "port": 4.2,
     "starboard": 4.3,
-    "mentality": 5.0,
-    "rarity": "Pretty Good"
+    "mentality": 4.9,
+    "rarity": "Pretty Good",
+    "medals": [
+      { "year": 2025, "boat": "1V", "placement": "Silver" },
+      { "year": 2024, "boat": "1V", "placement": "Silver" },
+      { "year": 2023, "boat": "2V", "placement": "Gold" },
+      { "year": 2022, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Minh Tran",
     "year": 2027,
     "2k": "06:35.6",
     "weight": 151.0,
-    "port": 4.5,
+    "port": 4.4,
     "starboard": 3.9,
     "mentality": 4.2,
-    "rarity": "Generational"
+    "rarity": "Generational",
+    "medals": []
   },
   {
     "name": "Julian Schatz",
     "year": 2028,
     "2k": "06:57.2",
-    "weight": 154.0,
+    "weight": 151.0,
     "port": 3.9,
     "starboard": 2.0,
     "mentality": 3.7,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": [
+      { "year": 2025, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Alex Barnes",
@@ -108,7 +153,13 @@ const ROWERS_DATA = [
     "port": 4.4,
     "starboard": 2.5,
     "mentality": 3.3,
-    "rarity": "Noob"
+    "rarity": "Noob",
+    "medals": [
+      { "year": 2025, "boat": "1V", "placement": "Silver" },
+      { "year": 2024, "boat": "3V", "placement": "Silver" },
+      { "year": 2023, "boat": "2V", "placement": "Gold" },
+      { "year": 2022, "boat": "4V", "placement": "Gold" }
+    ]
   },
   {
     "name": "Danny Luo",
@@ -118,7 +169,10 @@ const ROWERS_DATA = [
     "port": 3.2,
     "starboard": 3.0,
     "mentality": 3.7,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": [
+      { "year": 2025, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Rieden Rebugio",
@@ -128,7 +182,10 @@ const ROWERS_DATA = [
     "port": 3.0,
     "starboard": 3.3,
     "mentality": 2.7,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": [
+      { "year": 2025, "boat": "4V", "placement": "Gold" }
+    ]
   },
   {
     "name": "Sean Noh",
@@ -138,7 +195,8 @@ const ROWERS_DATA = [
     "port": 3.6,
     "starboard": 2.7,
     "mentality": 4.4,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": []
   },
   {
     "name": "Nathaniel Lee",
@@ -148,7 +206,8 @@ const ROWERS_DATA = [
     "port": 3.0,
     "starboard": 3.6,
     "mentality": 3.6,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": []
   },
   {
     "name": "Owen Kelly",
@@ -158,17 +217,19 @@ const ROWERS_DATA = [
     "port": 1.9,
     "starboard": 3.6,
     "mentality": 3.7,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": []
   },
   {
-    "name": "James Milward",
+    "name": "James Millward (Rower)",
     "year": 2026,
     "2k": "07:09.6",
     "weight": 138.7,
     "port": 2.4,
     "starboard": 3.2,
     "mentality": 3.1,
-    "rarity": "Noob"
+    "rarity": "Noob",
+    "medals": []
   },
   {
     "name": "Alden Strubhar",
@@ -178,7 +239,10 @@ const ROWERS_DATA = [
     "port": 2.8,
     "starboard": 3.1,
     "mentality": 3.9,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": [
+      { "year": 2025, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Holden Saunders",
@@ -186,9 +250,12 @@ const ROWERS_DATA = [
     "2k": "07:10.3",
     "weight": 140.0,
     "port": 3.9,
-    "starboard": 4.3,
+    "starboard": 4.1,
     "mentality": 3.9,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": [
+      { "year": 2024, "boat": "3V", "placement": "Silver" }
+    ]
   },
   {
     "name": "Finnegan Switzer",
@@ -197,8 +264,9 @@ const ROWERS_DATA = [
     "weight": 151.0,
     "port": 3.3,
     "starboard": 3.9,
-    "mentality": 3.9,
-    "rarity": "Noob"
+    "mentality": 3.8,
+    "rarity": "Noob",
+    "medals": []
   },
   {
     "name": "Shaheen Tahir",
@@ -208,7 +276,10 @@ const ROWERS_DATA = [
     "port": 3.6,
     "starboard": 2.8,
     "mentality": 3.7,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": [
+      { "year": 2025, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Colton Nagel",
@@ -218,7 +289,10 @@ const ROWERS_DATA = [
     "port": 2.7,
     "starboard": 3.1,
     "mentality": 3.9,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": [
+      { "year": 2025, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Arham Jain",
@@ -228,7 +302,8 @@ const ROWERS_DATA = [
     "port": 2.7,
     "starboard": 3.7,
     "mentality": 2.7,
-    "rarity": "Noob"
+    "rarity": "Noob",
+    "medals": []
   },
   {
     "name": "Ethan Hoffman",
@@ -238,7 +313,10 @@ const ROWERS_DATA = [
     "port": 3.5,
     "starboard": 3.5,
     "mentality": 4.4,
-    "rarity": "Mid"
+    "rarity": "Mid",
+    "medals": [
+      { "year": 2025, "boat": "F8", "placement": "Bronze" }
+    ]
   },
   {
     "name": "Alex Absher",
@@ -248,7 +326,8 @@ const ROWERS_DATA = [
     "port": 2.5,
     "starboard": 2.6,
     "mentality": 3.0,
-    "rarity": "Noob"
+    "rarity": "Noob",
+    "medals": []
   },
   {
     "name": "Jainam Shah",
@@ -258,7 +337,8 @@ const ROWERS_DATA = [
     "port": 2.4,
     "starboard": 2.5,
     "mentality": 2.5,
-    "rarity": "Noob"
+    "rarity": "Noob",
+    "medals": []
   },
   {
     "name": "Abhay Shukla",
@@ -268,7 +348,8 @@ const ROWERS_DATA = [
     "port": 2.3,
     "starboard": 2.9,
     "mentality": 2.8,
-    "rarity": "Noob"
+    "rarity": "Noob",
+    "medals": []
   },
   {
     "name": "Theodor Nedelescu",
@@ -278,7 +359,8 @@ const ROWERS_DATA = [
     "port": 3.6,
     "starboard": 2.4,
     "mentality": 2.8,
-    "rarity": "Noob"
+    "rarity": "Noob",
+    "medals": []
   },
   {
     "name": "Mickey Bekele",
@@ -288,7 +370,8 @@ const ROWERS_DATA = [
     "port": 2.7,
     "starboard": 3.8,
     "mentality": 3.9,
-    "rarity": "Noob"
+    "rarity": "Noob",
+    "medals": []
   },
   {
     "name": "Yun Kwak",
@@ -298,7 +381,8 @@ const ROWERS_DATA = [
     "port": 2.1,
     "starboard": 2.3,
     "mentality": 2.7,
-    "rarity": "Noob"
+    "rarity": "Noob",
+    "medals": []
   },
   {
     "name": "Oscar Dong",
@@ -308,7 +392,8 @@ const ROWERS_DATA = [
     "port": 2.0,
     "starboard": 2.1,
     "mentality": 2.5,
-    "rarity": "Noob"
+    "rarity": "Noob",
+    "medals": []
   },
   {
     "name": "Arbi Tahmazi",
