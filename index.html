@@ -32,19 +32,25 @@
   <!-- Panel: Richard Paul -->
   <section class="panel" id="panel-boat1">
     <h2><span class="boat-dot dot-1"></span>Richard Paul</h2>
-    <button class="btn-lineup" data-boat="boat1">Load Lineup</button>
+    <div class="boat-btn-row">
+      <button class="btn-lineup" data-boat="boat1">Load Lineup</button>
+      <button class="btn-randomize" data-boat="boat1">Randomize</button>
+    </div>
     <div class="panel-sub" id="boat1Meta">0 / 8 seats filled</div>
     <div class="boat-seats" id="boat1Seats"></div>
-    <div class="boat-ovr" id="boat1Ovr">OVR: --</div>
+    <div class="boat-stats" id="boat1Stats"></div>
   </section>
 
   <!-- Panel: The Challenger -->
   <section class="panel" id="panel-boat2">
     <h2><span class="boat-dot dot-2"></span>The Challenger</h2>
-    <button class="btn-lineup" data-boat="boat2">Load Lineup</button>
+    <div class="boat-btn-row">
+      <button class="btn-lineup" data-boat="boat2">Load Lineup</button>
+      <button class="btn-randomize" data-boat="boat2">Randomize</button>
+    </div>
     <div class="panel-sub" id="boat2Meta">0 / 8 seats filled</div>
     <div class="boat-seats" id="boat2Seats"></div>
-    <div class="boat-ovr" id="boat2Ovr">OVR: --</div>
+    <div class="boat-stats" id="boat2Stats"></div>
   </section>
 
   <!-- Panel: Race Course -->
@@ -55,10 +61,14 @@
         <button id="startBtn" class="btn btn-start"><i class="fa-solid fa-play"></i> Start</button>
         <button id="stopBtn" class="btn btn-stop" disabled><i class="fa-solid fa-pause"></i> Pause</button>
         <button id="resetBtn" class="btn btn-reset"><i class="fa-solid fa-rotate-left"></i> Reset</button>
-        <span id="raceStatus" class="race-status">Ready</span>
+        <button id="resultsBtn" class="btn btn-results" style="display:none"><i class="fa-solid fa-chart-simple"></i> Results</button>
       </div>
+      <div class="win-probs" id="winProbs"></div>
     </div>
     <div class="course" id="course">
+      <div class="lane-divider">
+        <span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span>
+      </div>
       <div class="course-lane" id="lane1">
         <div class="lane-label">Richard Paul</div>
         <div class="lane-track">
@@ -74,9 +84,14 @@
           <div class="boat-marker boat-marker-2" id="marker2"></div>
         </div>
       </div>
-      <div class="finish-line">
-        <span>FINISH</span>
+      <div class="lane-divider">
+        <span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span>
       </div>
+      <div class="finish-line"></div>
+    </div>
+    <div class="commentary" id="commentary">
+      <div class="commentary-header"><i class="fa-solid fa-microphone"></i> Commentary</div>
+      <div class="commentary-feed" id="commentaryFeed"></div>
     </div>
   </section>
 

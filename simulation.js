@@ -1,5 +1,5 @@
 class RaceSimulation {
-  constructor(boat1Rowers, boat2Rowers, boat1Coxswain, boat2Coxswain) {
+  constructor(boat1Rowers, boat2Rowers, boat1Coxswain, boat2Coxswain, deterministic = false) {
     this.boats = {
       boat1: this._initBoat(boat1Rowers, boat1Coxswain),
       boat2: this._initBoat(boat2Rowers, boat2Coxswain),
@@ -7,6 +7,7 @@ class RaceSimulation {
     this.simTime = 0;
     this.running = false;
     this.finished = false;
+    this.deterministic = deterministic;
   }
 
   _initBoat(rowers, coxswain) {
@@ -35,11 +36,16 @@ class RaceSimulation {
       _impulseThisStroke: 0,
       _steeringTarget: 0,
       _steeringTimer: 0,
+      executionFactor: 1.0,
+      startEF: 1.0,
+      middleMoveEF: 1.0,
+      sprintEF: 1.0,
+      middleMoveRemaining: undefined,
     };
   }
 
-  _getTargetRate(strokeCount, distanceFraction, coxswain) {
-    if (distanceFraction >= 0.8) {
+  _getTargetRate(strokeCount, distanceFraction, coxswain, sprinting) {
+    if (sprinting || distanceFraction >= 0.8) {
       const mot = coxswain ? Math.max(0, Math.min(5, coxswain.motivation || 0)) : 0;
       return 34 + Math.round(mot * 0.4);
     }
@@ -47,30 +53,34 @@ class RaceSimulation {
     return 36;
   }
 
-  _getPhaseMultiplier(strokeCount, distanceFraction, mentality, coxswain) {
-    if (distanceFraction >= 0.8) {
+  _getPhaseMultiplier(strokeCount, distanceFraction, rower, coxswain, sprinting) {
+    const power = rower.power || 250;
+    const powerFactor = Math.max(0.6, Math.min(1.3, power / 340));
+    const ment = Math.min(5, Math.max(0, rower.mentality || 0));
+    if (sprinting || distanceFraction >= 0.8) {
       const mot = coxswain ? Math.max(0, Math.min(5, coxswain.motivation || 0)) : 0;
-      return 1.02 + mot * 0.015;
+      return 0.98 + mot * 0.015 + 0.10 * powerFactor;
     }
-    if (strokeCount < 5) return 1.20;
-    return 0.85 + 0.03 * Math.max(0, Math.min(5, mentality || 0));
+    if (strokeCount < 5) return 1.05 + 0.15 * powerFactor;
+    return 0.85 + 0.03 * ment;
   }
 
-  _computeRowerOutput(rower, strokeCount, distanceFraction, coxswain) {
-    const phaseMult = this._getPhaseMultiplier(strokeCount, distanceFraction, rower.mentality, coxswain);
+  _computeRowerOutput(rower, strokeCount, distanceFraction, coxswain, executionFactor = 1, sprinting = false) {
+    const phaseMult = this._getPhaseMultiplier(strokeCount, distanceFraction, rower, coxswain, sprinting);
     const raceFrac = Math.min(1, distanceFraction);
     const ment = Math.min(5, Math.max(0, rower.mentality || 0));
     const strat = coxswain ? Math.max(0, Math.min(5, coxswain.strategy || 0)) : 0;
     const techCalls = coxswain ? Math.max(0, Math.min(5, coxswain.tech_calls || 0)) : 0;
     const decayPower = 1 - raceFrac * 0.20 * (1 - ment / 5) * (1 - strat * 0.10);
     const decayTech = 1 - raceFrac * 0.18 * (1 - ment / 5) * (1 - techCalls * 0.10);
-    const wattVar = (Math.random() - 0.5) * 50;
-    const techVar = (Math.random() - 0.5) * 0.7;
+    const wattVar = this.deterministic ? 0 : (Math.random() - 0.5) * 50;
+    const techVar = this.deterministic ? 0 : (Math.random() - 0.5) * 1.4;
     const baseTech = rower._seatSide === 'port'
       ? (rower.port || 0)
       : (rower.starboard || 0);
-    const effPower = Math.round(rower.power * phaseMult * decayPower + wattVar);
-    const effTech = Math.max(0.5, Math.min(5, baseTech * decayTech + techVar));
+    const rawPower = Math.round(rower.power * phaseMult * decayPower + wattVar);
+    const effPower = Math.round(rawPower * executionFactor * 10) / 10;
+    const effTech = Math.max(0.5, Math.min(5, (baseTech * decayTech + techVar) * executionFactor));
     return {
       name: rower.name,
       seatIdx: rower._seatIdx,
@@ -96,14 +106,14 @@ class RaceSimulation {
     const techVal = Math.min(5, Math.max(0.1, avgTech || 5));
     const noiseLevel = (5 - techVal) / 5;
     const maxJitter = noiseLevel * peak * 0.22;
-    const skewBase = 0.65 + Math.random() * 0.1;
-    const startPow = 0.85 + Math.random() * 0.3;
-    const endPow = 1.2 + Math.random() * 0.5;
+    const skewBase = this.deterministic ? 0.7 : 0.65 + Math.random() * 0.1;
+    const startPow = this.deterministic ? 1.0 : 0.85 + Math.random() * 0.3;
+    const endPow = this.deterministic ? 1.45 : 1.2 + Math.random() * 0.5;
     const frac = Math.pow(techVal / 5, 0.5);
     const baseStart = 60 * frac;
     const baseEnd = -35 * frac;
-    const startAngle = Math.max(0, Math.min(60, baseStart + (Math.random() - 0.5) * 5));
-    const endAngle = Math.max(-35, Math.min(0, baseEnd + (Math.random() - 0.5) * 5));
+    const startAngle = Math.max(0, Math.min(60, baseStart + (this.deterministic ? 0 : (Math.random() - 0.5) * 5)));
+    const endAngle = Math.max(-35, Math.min(0, baseEnd + (this.deterministic ? 0 : (Math.random() - 0.5) * 5)));
     const range = startAngle - endAngle;
     const curve = [];
     for (let i = 0; i < points; i++) {
@@ -112,7 +122,7 @@ class RaceSimulation {
       const skewed = Math.pow(t, skewBase);
       let value = peak * Math.pow(Math.sin(Math.PI * skewed), skewed <= 0.5 ? startPow : endPow);
       const phaseMod = Math.sin(Math.PI * skewed);
-      const jitter = (Math.random() - 0.5) * 2 * maxJitter * phaseMod;
+      const jitter = this.deterministic ? 0 : (Math.random() - 0.5) * 2 * maxJitter * phaseMod;
       curve.push({ x: Math.round(angle), y: Math.round(Math.max(0, value + jitter)) });
     }
     return curve;
@@ -130,13 +140,23 @@ class RaceSimulation {
     return fullCurve.map((v, i) => (i <= visible ? v : { x: v.x, y: null }));
   }
 
-  _completeStroke(boat, distFrac) {
+  _completeStroke(boat, distFrac, sprinting) {
     const cox = boat.coxswain;
-    const targetRate = this._getTargetRate(boat.strokeCount, distFrac, cox);
-    boat.strokeRate = Math.max(18, targetRate + Math.round((Math.random() - 0.5) * 2));
+    const targetRate = this._getTargetRate(boat.strokeCount, distFrac, cox, sprinting);
+    boat.strokeRate = Math.max(18, targetRate + (this.deterministic ? 0 : Math.round((Math.random() - 0.5) * 2)));
     boat.strokeCount++;
+    let phaseEF;
+    if (boat.strokeCount <= 5) {
+      phaseEF = boat.startEF !== undefined ? boat.startEF : 1;
+    } else if (boat.middleMoveRemaining > 0) {
+      phaseEF = boat.middleMoveEF !== undefined ? boat.middleMoveEF : 1;
+    } else if (sprinting) {
+      phaseEF = boat.sprintEF !== undefined ? boat.sprintEF : 1;
+    } else {
+      phaseEF = boat.executionFactor !== undefined ? boat.executionFactor : 1;
+    }
     const outputs = boat.rowers.map(r =>
-      this._computeRowerOutput(r, boat.strokeCount - 1, distFrac, cox)
+      this._computeRowerOutput(r, boat.strokeCount - 1, distFrac, cox, phaseEF, sprinting)
     );
     boat.rowerData = outputs;
     let totalWatts = outputs.reduce((s, r) => s + r.effPower, 0);
@@ -148,11 +168,15 @@ class RaceSimulation {
     const rateFactor = 0.7 + 0.0075 * boat.strokeRate;
     const driveDuration = 0.35 / (boat.strokeRate / 60);
     const massFactor = this._getMassFactor(boat.rowers, cox);
-    const impulse = totalWatts * techFactor * rateFactor * driveDuration * 0.00028 * massFactor;
+    const chemistryFactor = 0.98 + 0.0004 * (boat.chemistry || 0);
+    const impulse = totalWatts * techFactor * rateFactor * driveDuration * 0.00028 * massFactor * chemistryFactor;
     boat._impulseThisStroke = impulse;
 
     boat.fullCurve = this._generateCurve(totalWatts, avgTech);
     if (boat.speed > 0) boat.split500 = 500 / boat.speed;
+    if (boat.middleMoveRemaining !== undefined && boat.middleMoveRemaining > 0) {
+      boat.middleMoveRemaining--;
+    }
   }
 
   _updateHeading(boat, dt) {
@@ -165,8 +189,10 @@ class RaceSimulation {
       boat._steeringTimer += dt;
       while (boat._steeringTimer >= 1.5) {
         boat._steeringTimer -= 1.5;
-        const driftMag = (5 - steer) * 0.028 + 0.003;
-        boat._steeringTarget += (Math.random() - 0.5) * driftMag * 2;
+        if (!this.deterministic) {
+          const driftMag = (5 - steer) * 0.028 + 0.003;
+          boat._steeringTarget += (Math.random() - 0.5) * driftMag * 2;
+        }
         boat._steeringTarget = Math.max(-maxAngle, Math.min(maxAngle, boat._steeringTarget));
       }
 
@@ -209,24 +235,38 @@ class RaceSimulation {
         boat.centerY = Math.max(-2.0, Math.min(2.0, boat.centerY));
         const pathMult = 1 + Math.abs(boat.headingAngle) * 0.70;
         boat.totalDistTraveled += boat.speed * dt * pathMult;
+        const coastAngleDecel = Math.abs(boat.headingAngle) * 0.15 * boat.speed;
+        boat.speed -= coastAngleDecel * dt;
         boat.speed *= Math.max(0, 1 - dt * 0.35);
         continue;
       }
 
       const distFrac = boat.centerX / 750;
 
+      const otherKey = key === 'boat1' ? 'boat2' : 'boat1';
+      const otherBoat = this.boats[otherKey];
+      const losing = otherBoat.rowers.length > 0 && distFrac < (otherBoat.centerX / 750);
+
+      if (boat.middleMoveRemaining === undefined && distFrac >= 375 / 750 && boat.strokeCount > 0) {
+        boat.middleMoveRemaining = 5;
+      }
+      const middleActive = (boat.middleMoveRemaining || 0) > 0;
+      const sprinting = (distFrac >= 550 / 750 && losing) || middleActive;
+
       // On the very first tick, give the boat a starting speed and impulse so
       // it launches immediately instead of crawling from a dead stop.
       if (boat.strokeCount === 0 && boat._impulseThisStroke === 0) {
-        const baseTotal = boat.rowers.reduce((s, r) => s + (r.power || 0), 0);
+        const baseTotal = boat.rowers.reduce((s, r) => s + (r.power || 0), 0) * (boat.executionFactor || 1);
         const baseTech = boat.rowers.reduce((s, r) => s + (r._seatSide === 'port' ? (r.port || 0) : (r.starboard || 0)), 0) / boat.rowers.length;
         const techFactor = 0.60 + 0.08 * baseTech;
         const rateFactor = 0.7 + 0.0075 * 20;
         const driveDuration = 0.35 / (20 / 60);
-        boat._impulseThisStroke = baseTotal * techFactor * rateFactor * driveDuration * 0.00028 * this._getMassFactor(boat.rowers, boat.coxswain);
+        const chemFactor = 0.98 + 0.0004 * (boat.chemistry || 0);
+        boat._impulseThisStroke = baseTotal * techFactor * rateFactor * driveDuration * 0.00028 * this._getMassFactor(boat.rowers, boat.coxswain) * chemFactor;
         boat.totalWatts = Math.round(baseTotal * 1.2);
         boat.fullCurve = this._generateCurve(boat.totalWatts, baseTech);
-        boat.rowerData = boat.rowers.map(r => this._computeRowerOutput(r, 0, 0));
+        const startEF = boat.startEF !== undefined ? boat.startEF : 1;
+        boat.rowerData = boat.rowers.map(r => this._computeRowerOutput(r, 0, 0, null, startEF));
         boat.speed = Math.cbrt(Math.max(baseTotal, 1)) * 0.48 * 0.7;
       }
 
@@ -236,7 +276,8 @@ class RaceSimulation {
 
       const dragCoeff = 0.008;
       const dragDecel = dragCoeff * boat.speed * boat.speed;
-      boat.speed -= dragDecel * dt;
+      const angleDecel = Math.abs(boat.headingAngle) * 0.15 * boat.speed;
+      boat.speed -= (dragDecel + angleDecel) * dt;
       boat.speed = Math.max(0, boat.speed);
 
       if (boat.strokePhase < 0.35) {
@@ -246,7 +287,7 @@ class RaceSimulation {
       }
 
       if (boat.strokePhase < prevPhase) {
-        this._completeStroke(boat, distFrac);
+        this._completeStroke(boat, distFrac, sprinting);
         strokeCompleted = true;
       }
 
@@ -264,7 +305,7 @@ class RaceSimulation {
 
       if (boat.centerX >= 750 && boat.finishSimTime === null) {
         if (!strokeCompleted) {
-          this._completeStroke(boat, Math.min(1, distFrac));
+          this._completeStroke(boat, Math.min(1, distFrac), sprinting);
         }
         boat._finishTarget = boat.strokePhase < 0.35 ? 0.35 : 1.0;
         boat._finishSpeed = boat.speed;
@@ -345,6 +386,7 @@ class RaceSimulation {
       b._impulseThisStroke = 0;
       b._steeringTarget = 0;
       b._steeringTimer = 0;
+      b.middleMoveRemaining = undefined;
     }
     this.simTime = 0;
     this.running = false;
