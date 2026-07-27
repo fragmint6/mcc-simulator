@@ -34,9 +34,8 @@ class RaceSimulation {
       _finishSpeed: 0,
       _finishDisplayDist: 0,
       _impulseThisStroke: 0,
-      _steeringTarget: 0,
-      _steeringTimer: 0,
       executionFactor: 1.0,
+      _powerDelta: 0,
       startEF: 1.0,
       middleMoveEF: 1.0,
       sprintEF: 1.0,
@@ -180,6 +179,14 @@ class RaceSimulation {
         o.effTech = Math.round(Math.min(5, o.effTech * 1.01) * 100) / 100;
       });
     }
+    // Port vs Starboard power coupling
+    let portWatts = 0, starWatts = 0;
+    outputs.forEach(o => {
+      if (o.seatIdx % 2 === 0) portWatts += o.effPower;
+      else starWatts += o.effPower;
+    });
+    boat._powerDelta = portWatts - starWatts;
+
     let totalWatts = outputs.reduce((s, r) => s + r.effPower, 0);
     const avgTech = outputs.reduce((s, r) => s + r.effTech, 0) / outputs.length;
     boat.totalWatts = totalWatts;
@@ -194,6 +201,12 @@ class RaceSimulation {
     boat._impulseThisStroke = impulse;
 
     boat.fullCurve = this._generateCurve(totalWatts, avgTech);
+    // Normalize curve so integral of (y/totalWatts * _curveScale) over drive equals 1
+    const sumY = boat.fullCurve.reduce((s, p) => s + p.y, 0);
+    const nPoints = boat.fullCurve.length;
+    // discrete integral: sum(y/totalWatts * dt_point) where dt_point = driveDuration / (nPoints - 1)
+    // want that integral to equal 1, so scale = 1 / (sumY / totalWatts * driveDuration / (nPoints - 1))
+    boat._curveScale = (nPoints - 1) * totalWatts / (driveDuration * sumY);
     if (boat.speed > 0) boat.split500 = 500 / boat.speed;
     if (boat.middleMoveRemaining !== undefined && boat.middleMoveRemaining > 0) {
       boat.middleMoveRemaining--;
@@ -203,29 +216,29 @@ class RaceSimulation {
   _updateHeading(boat, dt) {
     const hasCox = boat.coxswain !== null;
     const steer = hasCox ? Math.max(0, Math.min(5, boat.coxswain.steering || 0)) : 0;
-    const maxAngle = Math.min(0.15, 0.01 + (5 - steer) * 0.025);
 
-    // Random drift — more for bad steering
-    if (hasCox) {
-      boat._steeringTimer += dt;
-      while (boat._steeringTimer >= 1.5) {
-        boat._steeringTimer -= 1.5;
-        if (!this.deterministic) {
-          const driftMag = (5 - steer) * 0.028 + 0.003;
-          boat._steeringTarget += (Math.random() - 0.5) * driftMag * 2;
-        }
-        boat._steeringTarget = Math.max(-maxAngle, Math.min(maxAngle, boat._steeringTarget));
-      }
+    // Physical torque from port/starboard power imbalance
+    const riggingTorque = 0.000035;
+    const physTorque = (boat._powerDelta || 0) * riggingTorque;
 
-      // Coxswain steers bow toward lane center
-      if (steer > 0) {
-        const laneCenterPull = -boat.centerY * 0.01;
-        boat._steeringTarget += (laneCenterPull - boat._steeringTarget) * Math.min(1, 0.3 * dt);
-        boat._steeringTarget = Math.max(-maxAngle, Math.min(maxAngle, boat._steeringTarget));
-      }
+    // Coxswain applies rudder to counter torque and hold lane center
+    let rudderAngle = 0;
+    if (hasCox && steer > 0) {
+      const correctionStrength = steer / 5;
+      rudderAngle = -physTorque * correctionStrength;
+      const laneCorrection = -boat.centerY * 0.003 * correctionStrength;
+      rudderAngle += laneCorrection;
+      rudderAngle = Math.max(-0.05, Math.min(0.05, rudderAngle));
     }
 
-    boat.headingAngle += (boat._steeringTarget - boat.headingAngle) * Math.min(1, 0.6 * dt);
+    // Net heading change
+    const netTorque = physTorque + rudderAngle;
+    boat.headingAngle += netTorque * dt;
+    boat.headingAngle = Math.max(-0.2, Math.min(0.2, boat.headingAngle));
+
+    // Rudder drag penalty
+    const rudderDrag = rudderAngle * rudderAngle * 15;
+    boat.speed -= rudderDrag * dt;
   }
 
   tick(dt) {
@@ -284,8 +297,15 @@ class RaceSimulation {
         const driveDuration = 0.35 / (20 / 60);
         const chemFactor = 0.98 + 0.0004 * (boat.chemistry || 0);
         boat._impulseThisStroke = baseTotal * techFactor * rateFactor * driveDuration * 0.00028 * this._getMassFactor(boat.rowers, boat.coxswain) * chemFactor;
+        let pW = 0, sW = 0;
+        boat.rowers.forEach((r, i) => { if (i % 2 === 0) pW += r.power || 0; else sW += r.power || 0; });
+        boat._powerDelta = pW - sW;
         boat.totalWatts = Math.round(baseTotal * 1.2);
         boat.fullCurve = this._generateCurve(boat.totalWatts, baseTech);
+        const sumY = boat.fullCurve.reduce((s, p) => s + p.y, 0);
+        const nPoints = boat.fullCurve.length;
+        const dd = 0.35 / (20 / 60);
+        boat._curveScale = (nPoints - 1) * boat.totalWatts / (dd * sumY);
         const startEF = boat.startEF !== undefined ? boat.startEF : 1;
         boat.rowerData = boat.rowers.map(r => this._computeRowerOutput(r, 0, 0, null, startEF));
         boat.speed = Math.cbrt(Math.max(baseTotal, 1)) * 0.48 * 0.7;
@@ -302,9 +322,16 @@ class RaceSimulation {
       boat.speed = Math.max(0, boat.speed);
 
       if (boat.strokePhase < 0.35) {
-        const driveDuration = 0.35 / (boat.strokeRate / 60);
-        const impulseRate = boat._impulseThisStroke / driveDuration;
-        boat.speed += impulseRate * dt;
+        const progress = boat.strokePhase / 0.35;
+        if (boat.fullCurve && boat.fullCurve.length > 0 && boat.totalWatts > 0 && boat._curveScale) {
+          const idx = Math.min(boat.fullCurve.length - 1, Math.floor(progress * (boat.fullCurve.length - 1)));
+          const cp = boat.fullCurve[idx];
+          boat.speed += (cp.y / boat.totalWatts) * boat._curveScale * boat._impulseThisStroke * dt;
+        } else {
+          const driveDuration = 0.35 / (boat.strokeRate / 60);
+          const impulseRate = boat._impulseThisStroke / driveDuration;
+          boat.speed += impulseRate * dt;
+        }
       }
 
       if (boat.strokePhase < prevPhase) {
