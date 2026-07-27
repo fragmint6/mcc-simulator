@@ -2276,10 +2276,8 @@ function _runQuickRace(rowers1, rowers2, cox1, cox2, execFactor1, execFactor2) {
   const sim = new RaceSimulation(rowers1, rowers2, cox1, cox2, true);
   sim.boats.boat1.chemistry = rowers1.length >= 2 ? computeChemistry(rowers1) : 0;
   sim.boats.boat2.chemistry = rowers2.length >= 2 ? computeChemistry(rowers2) : 0;
-  const steer1 = cox1 ? Math.max(0, Math.min(5, cox1.steering || 0)) : 0;
-  const steer2 = cox2 ? Math.max(0, Math.min(5, cox2.steering || 0)) : 0;
-  sim.boats.boat1.executionFactor = execFactor1 * (1 - (5 - steer1) * 0.008);
-  sim.boats.boat2.executionFactor = execFactor2 * (1 - (5 - steer2) * 0.008);
+  sim.boats.boat1.executionFactor = execFactor1;
+  sim.boats.boat2.executionFactor = execFactor2;
   sim.boats.boat1.startEF = 1;
   sim.boats.boat2.startEF = 1;
   sim.boats.boat1.middleMoveEF = 1;
