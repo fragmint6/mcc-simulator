@@ -18,7 +18,12 @@ const ROWERS_DATA = [
     "port": 3.9,
     "starboard": 4.1,
     "mentality": 4.4,
-    "rarity": "Freak"
+    "rarity": "Freak",
+    "individualAwards": [
+      { "year": 2025, "award": "Honorable Mention" },
+      { "year": 2024, "award": "Honorable Mention" },
+      { "year": 2025, "award": "Hammer" }
+    ]
   },
   {
     "name": "Carson Fast",
@@ -28,7 +33,12 @@ const ROWERS_DATA = [
     "port": 4.3,
     "starboard": 3.1,
     "mentality": 4.8,
-    "rarity": "Generational"
+    "rarity": "Generational",
+    "individualAwards": [
+      { "year": 2026, "award": "First Team" },
+      { "year": 2026, "award": "Hammer" }
+    ],
+    "captain": true
   },
   {
     "name": "Henry Terrell",
@@ -48,7 +58,8 @@ const ROWERS_DATA = [
     "port": 2,
     "starboard": 4.1,
     "mentality": 3.9,
-    "rarity": "Pretty Good"
+    "rarity": "Pretty Good",
+    "captain": true
   },
   {
     "name": "Adrian Wiklund",
@@ -58,7 +69,12 @@ const ROWERS_DATA = [
     "port": 3.8,
     "starboard": 2.3,
     "mentality": 4,
-    "rarity": "Pretty Good"
+    "rarity": "Pretty Good",
+    "individualAwards": [
+      { "year": 2026, "award": "Second Team" },
+      { "year": 2026, "award": "Most Valuable Player" }
+    ],
+    "captain": true
   },
   {
     "name": "Jack Kirk",
@@ -88,7 +104,10 @@ const ROWERS_DATA = [
     "port": 4.4,
     "starboard": 3.9,
     "mentality": 4.2,
-    "rarity": "Generational"
+    "rarity": "Generational",
+    "individualAwards": [
+      { "year": 2026, "award": "Second Team" }
+    ]
   },
   {
     "name": "Julian Schatz",

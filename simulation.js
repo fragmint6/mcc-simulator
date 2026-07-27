@@ -79,6 +79,7 @@ class RaceSimulation {
       ? (rower.port || 0)
       : (rower.starboard || 0);
     const rawPower = Math.round(rower.power * phaseMult * decayPower + wattVar);
+    const expectedPower = rower.power * phaseMult * decayPower;
     const effPower = Math.round(rawPower * executionFactor * 10) / 10;
     const effTech = Math.max(0.5, Math.min(5, (baseTech * decayTech + techVar) * executionFactor));
     return {
@@ -86,6 +87,7 @@ class RaceSimulation {
       seatIdx: rower._seatIdx,
       weight: rower.weight || 0,
       basePower: rower.power,
+      expectedPower,
       baseTech: Math.round(baseTech * 10) / 10,
       effPower,
       effTech: Math.round(effTech * 100) / 100,
@@ -159,6 +161,12 @@ class RaceSimulation {
       this._computeRowerOutput(r, boat.strokeCount - 1, distFrac, cox, phaseEF, sprinting)
     );
     boat.rowerData = outputs;
+    // Captain tech boost: +1% to every rower's effTech
+    if (boat.rowers.some(r => r.captain)) {
+      outputs.forEach(o => {
+        o.effTech = Math.round(Math.min(5, o.effTech * 1.01) * 100) / 100;
+      });
+    }
     let totalWatts = outputs.reduce((s, r) => s + r.effPower, 0);
     const avgTech = outputs.reduce((s, r) => s + r.effTech, 0) / outputs.length;
     boat.totalWatts = totalWatts;

@@ -55,6 +55,8 @@ function buildRowerFromRecord(record, index) {
     mentality: record.mentality || 0,
     rarity: record.rarity || "Unknown",
     medals: record.medals || [],
+    individualAwards: record.individualAwards || [],
+    captain: record.captain || false,
   };
 }
 
@@ -79,6 +81,8 @@ function buildCoxswainFromRecord(record, index) {
     weight: record.weight || 105,
     rarity: record.rarity || "Unknown",
     medals: record.medals || [],
+    individualAwards: record.individualAwards || [],
+    captain: record.captain || false,
     ovr: computeCOXR(record),
   };
 }
@@ -275,7 +279,7 @@ function computeCOXR(c) {
            + 0.35 * (c.steering || 0);
   const base = 18 * ws + 9 + 4 * Math.pow(Math.max(0, ws - 4), 2);
   const adj = (105 - (c.weight || 105)) / 10;
-  const bonus = computeMedalBonus(c.name, 'coxswain');
+  const bonus = computeMedalBonus(c.name, 'coxswain') + computeIndividualAwardBonus(c) + (c.captain ? 1 : 0);
   return Math.round(base + adj + bonus);
 }
 
@@ -634,6 +638,19 @@ function computeMedalBonus(name, type) {
   return Math.min(4, 1.5 * gold + 1.0 * silver + 0.5 * bronze);
 }
 
+function computeIndividualAwardBonus(person) {
+  const awards = person.individualAwards || [];
+  let total = 0;
+  awards.forEach(a => {
+    if (a.award === "First Team") total += 1.5;
+    else if (a.award === "Second Team") total += 1;
+    else if (a.award === "Honorable Mention") total += 0.5;
+    else if (a.award === "Most Valuable Player") total += 1;
+    else if (a.award === "Hammer") total += 1;
+  });
+  return Math.min(3, total);
+}
+
 function computeOVR(rower, seatSide) {
   const secs = parseScoreToSeconds(rower.twoK);
   if (!secs) return 0;
@@ -654,7 +671,7 @@ function computeOVR(rower, seatSide) {
   const RPW = Math.max(50, Math.min(99, ptow * 38.0));
   const RMental = 18 * (rower.mentality || 0) + 9;
   const base = 0.50 * R2k + 0.25 * RTech + 0.15 * RPW + 0.10 * RMental;
-  const bonus = computeMedalBonus(rower.name, 'rower');
+  const bonus = computeMedalBonus(rower.name, 'rower') + computeIndividualAwardBonus(rower) + (rower.captain ? 1 : 0);
   return Math.round(base + bonus);
 }
 
@@ -747,7 +764,10 @@ function buildHoverCardHTML(item, itemType, seatSide) {
   return `
     <div class="hc-pattern"></div>
     <div class="hc-particles">${particles}</div>
-    <div class="hc-top"><span class="hc-name">${item.name}</span></div>
+    <div class="hc-top">
+      <span class="hc-name">${item.name}</span>
+      ${item.captain ? '<span class="hc-captain-badge">Captain</span>' : ''}
+    </div>
     <div class="hc-grid">${statsHtml}</div>
     <div class="hc-dots">${dotsHtml}</div>
     <div class="hc-footer"><span class="hc-rarity" style="background:${rs.color}">${rs.icon} ${rs.label}</span></div>
@@ -922,6 +942,25 @@ function buildMedalsHTML(medals) {
   }).join("");
 }
 
+function buildIndividualAwardsHTML(awards) {
+  if (!awards || awards.length === 0) return '<div class="assign-no-medals">No individual awards</div>';
+  const sorted = [...awards].sort((a, b) => b.year - a.year);
+  return sorted.map((a, i) => {
+    const cls = a.award === "First Team" || a.award === "Most Valuable Player" || a.award === "Hammer"
+      ? "medal-place-gold"
+      : a.award === "Second Team"
+        ? "medal-place-silver"
+        : "medal-place-bronze";
+    const icon = a.award === "Most Valuable Player" ? '<i class="fa-solid fa-crown"></i>'
+      : a.award === "Hammer" ? '<i class="fa-solid fa-gavel"></i>'
+      : '<i class="fa-solid fa-star"></i>';
+    return `<div class="assign-medal-entry" style="animation-delay:${0.15 + i * 0.06}s">
+      <span class="medal-year">${a.year}</span>
+      <span class="medal-place ${cls}">${icon} ${a.award}</span>
+    </div>`;
+  }).join("");
+}
+
 function buildLineupsHTML(name, type) {
   if (!lineups || lineups.length === 0) return '<div class="assign-no-lineups">No lineups available</div>';
   const rowerLineups = type === 'rower'
@@ -997,15 +1036,28 @@ function renderAssignPopup() {
   const rarityAttr = effRarity === "Unknown" ? "unknown" : effRarity;
   const hoverHTML = buildHoverCardHTML(item, type);
   const medalsHTML = buildMedalsHTML(getMedalsForPerson(item.name, type));
+  const individualAwardsHTML = buildIndividualAwardsHTML(item.individualAwards);
   const lineupsHTML = buildLineupsHTML(item.name, type);
 
-  // Left column: hover card + medals + lineups
+  // Left column: hover card only
   const leftCol = `
     <div class="assign-left-col">
       <div class="rower-hover-card popup-card-static" data-rarity="${rarityAttr}">${hoverHTML}</div>
+    </div>
+  `;
+
+  // Right column: sections + boat panels
+  let rightCol = `<div class="assign-right-col${isCox ? ' coxswain-mode' : ''}">`;
+
+  rightCol += `
+    <div class="assign-right-sections">
       <div class="assign-medals">
         <div class="assign-medals-title"><i class="fa-solid fa-trophy"></i> State Medals</div>
         <div class="assign-medals-list">${medalsHTML}</div>
+      </div>
+      <div class="assign-medals">
+        <div class="assign-medals-title"><i class="fa-solid fa-award"></i> Individual Awards</div>
+        <div class="assign-medals-list">${individualAwardsHTML}</div>
       </div>
       <div class="assign-lineups">
         <div class="assign-lineups-title"><i class="fa-solid fa-people-group"></i> Lineups</div>
@@ -1014,9 +1066,7 @@ function renderAssignPopup() {
     </div>
   `;
 
-  // Right column: boat panels
-  let rightCol = `<div class="assign-right-col${isCox ? ' coxswain-mode' : ''}">`;
-
+  rightCol += `<div class="assign-right-boats">`;
   if (type === 'rower') {
     for (const key of ["boat1", "boat2"]) {
       const boatName = key === "boat1" ? "Richard Paul" : "The Challenger";
@@ -1064,8 +1114,9 @@ function renderAssignPopup() {
       </div>`;
     }
   }
+  rightCol += `</div>`;  // close assign-right-boats
 
-  rightCol += `</div>`;
+  rightCol += `</div>`;  // close assign-right-col
 
   body.innerHTML = leftCol + rightCol;
 
@@ -1446,7 +1497,7 @@ function tickRace(now) {
       tel.strokes.push({ n: s.boat1.strokeCount, watts: bb.totalWatts, split: bb.split500, heading: bb.headingAngle, speed: bb.speed, dist: bb.centerX, time: s.displayTime });
       bb.rowerData.forEach(r => {
         if (!tel.rowers[r.name]) tel.rowers[r.name] = [];
-        tel.rowers[r.name].push({ watts: r.effPower, tech: r.effTech, basePower: r.basePower, baseTech: r.baseTech });
+        tel.rowers[r.name].push({ watts: r.effPower, tech: r.effTech, basePower: r.basePower, baseTech: r.baseTech, expectedPower: r.expectedPower });
       });
     }}
   }
@@ -1458,7 +1509,7 @@ function tickRace(now) {
       tel.strokes.push({ n: s.boat2.strokeCount, watts: bb.totalWatts, split: bb.split500, heading: bb.headingAngle, speed: bb.speed, dist: bb.centerX, time: s.displayTime });
       bb.rowerData.forEach(r => {
         if (!tel.rowers[r.name]) tel.rowers[r.name] = [];
-        tel.rowers[r.name].push({ watts: r.effPower, tech: r.effTech, basePower: r.basePower, baseTech: r.baseTech });
+        tel.rowers[r.name].push({ watts: r.effPower, tech: r.effTech, basePower: r.basePower, baseTech: r.baseTech, expectedPower: r.expectedPower });
       });
     }}
   }
@@ -1675,15 +1726,15 @@ function tickRace(now) {
             const prevCount = key === "boat1" ? prevStrokeCount1 : prevStrokeCount2;
             if (sCount === prevCount || sCount === 0 || !b.rowerData) continue;
             const rowers = b.rowerData;
-            const best = rowers.reduce((a, b) => a.effPower / (a.basePower||1) > b.effPower / (b.basePower||1) ? a : b);
-            const worst = rowers.reduce((a, b) => a.effPower / (a.basePower||1) < b.effPower / (b.basePower||1) ? a : b);
-            const bestRatio = best.effPower / (best.basePower||1);
-            const worstRatio = worst.effPower / (worst.basePower||1);
-            if (bestRatio >= 1.06 && Math.random() < 0.25) {
+            const best = rowers.reduce((a, b) => a.effPower / (a.expectedPower||1) > b.effPower / (b.expectedPower||1) ? a : b);
+            const worst = rowers.reduce((a, b) => a.effPower / (a.expectedPower||1) < b.effPower / (b.expectedPower||1) ? a : b);
+            const bestRatio = best.effPower / (best.expectedPower||1);
+            const worstRatio = worst.effPower / (worst.expectedPower||1);
+            if (bestRatio >= 1.08 && Math.random() < 0.25) {
               strokeComment = { boat: name(key), rower: pickShortName(best), type: "good" };
               break;
             }
-            if (worstRatio <= 0.72 && Math.random() < 0.25) {
+            if (worstRatio <= 0.92 && Math.random() < 0.25) {
               strokeComment = { boat: name(key), rower: pickShortName(worst), type: "bad" };
               break;
             }
@@ -2014,20 +2065,21 @@ function showRaceSummaryPopup() {
   const bs2 = bStats(s2, tel2 ? tel2.rowers : null);
   const rowerTable = (tel, key) => {
     if (!tel || !tel.rowers) return "";
-    const allData = Object.values(tel.rowers).flat();
-    const avgAllEff = allData.reduce((s, d) => s + d.watts, 0) / allData.length;
-    const avgAllBase = allData.reduce((s, d) => s + d.basePower, 0) / allData.length;
-    const normFactor = avgAllBase > 0 ? avgAllEff / avgAllBase : 1;
     const rows = Object.entries(tel.rowers).map(([name, data]) => {
       const avgP = avg(data, d => d.watts);
       const pkP = Math.max(...data.map(d => d.watts));
       const avgT = avg(data, d => d.tech);
-      const avgBaseP = avg(data, d => d.basePower);
-      const raw = avgBaseP > 0 ? avgP / avgBaseP : 1;
-      const pct = raw / normFactor;
-      const pctStr = (pct >= 1 ? "+" : "") + ((pct - 1) * 100).toFixed(1) + "%";
-      const cls = pct >= 1 ? "col-green" : "col-red";
-      return { name, avgP, pkP, avgT, pct, pctStr, cls };
+      const avgExpP = avg(data, d => d.expectedPower);
+      const raw = avgExpP > 0 ? avgP / avgExpP : 1;
+      return { name, avgP, pkP, avgT, raw };
+    });
+    const avgRaw = rows.reduce((s, r) => s + r.raw, 0) / rows.length;
+    const normFactor = avgRaw > 0 ? avgRaw : 1;
+    rows.forEach(r => {
+      const pct = r.raw / normFactor;
+      r.pct = pct;
+      r.pctStr = (pct >= 1 ? "+" : "") + ((pct - 1) * 100).toFixed(1) + "%";
+      r.cls = pct >= 1 ? "col-green" : "col-red";
     });
     rows.sort((a, b) => b.pct - a.pct);
     const mvp = rows[0];
@@ -2423,6 +2475,7 @@ startBtn.addEventListener("click", startRace);
 stopBtn.addEventListener("click", togglePause);
 resetBtn.addEventListener("click", resetRaceState);
 resultsBtn.addEventListener("click", () => showRaceSummaryPopup());
+document.getElementById("hofBtn").addEventListener("click", showHallOfFamePopup);
 
 document.querySelectorAll(".btn-lineup").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -2437,6 +2490,136 @@ document.querySelectorAll(".btn-randomize").forEach(btn => {
     randomizeBoat(boatKey);
   });
 });
+
+// ---------- Hall of Fame ----------
+
+function computeDecorationScore(person, type) {
+  let pts = 0;
+  const medals = getMedalsForPerson(person.name, type);
+  medals.forEach(m => {
+    if (m.placement === "Gold") pts += 5;
+    else if (m.placement === "Silver") pts += 3;
+    else if (m.placement === "Bronze") pts += 2;
+  });
+  (person.individualAwards || []).forEach(a => {
+    if (a.award === "First Team") pts += 4;
+    else if (a.award === "Second Team") pts += 2.5;
+    else if (a.award === "Honorable Mention") pts += 1.5;
+    else if (a.award === "Most Valuable Player") pts += 1;
+    else if (a.award === "Hammer") pts += 1;
+  });
+  if (person.captain) pts += 1;
+  return pts;
+}
+
+function getHallOfFameData() {
+  const validRowers = rowers.filter(r => r.twoK && parseScoreToSeconds(r.twoK));
+
+  // Fastest Erg (lowest 2k time)
+  const fastestErg = validRowers.reduce((a, b) =>
+    parseScoreToSeconds(a.twoK) < parseScoreToSeconds(b.twoK) ? a : b
+  );
+
+  // Pound for Pound (watts / weight)
+  const pfp = validRowers
+    .filter(r => r.weight && r.weight > 0)
+    .map(r => ({ rower: r, ratio: scoreToWatts(r.twoK) / r.weight }))
+    .sort((a, b) => b.ratio - a.ratio);
+  const poundForPound = pfp[0];
+
+  // Most Decorated (rowers + coxswains)
+  const decorated = [
+    ...validRowers.map(r => ({ rower: r, score: computeDecorationScore(r, 'rower'), type: 'rower' })),
+    ...(coxswains || []).map(c => ({ rower: c, score: computeDecorationScore(c, 'coxswain'), type: 'coxswain' }))
+  ].sort((a, b) => b.score - a.score);
+  const mostDecorated = decorated[0];
+
+  // Greatest Boat (highest lineup OVR)
+  let greatestBoat = null;
+  let bestOvr = -1;
+  LINEUPS_DATA.forEach(lu => {
+    const ovr = computeLineupOVR(lu);
+    if (ovr > bestOvr) {
+      bestOvr = ovr;
+      greatestBoat = { lineup: lu, ovr };
+    }
+  });
+
+  return { fastestErg, poundForPound, mostDecorated, greatestBoat };
+}
+
+function showHallOfFamePopup() {
+  const data = getHallOfFameData();
+  const overlay = document.createElement("div");
+  overlay.className = "hof-overlay";
+
+  const format2k = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toFixed(1).padStart(4, "0")}`;
+  };
+
+  // Build awards detail for Most Decorated
+  const decRower = data.mostDecorated.rower;
+  const decType = data.mostDecorated.type || 'rower';
+  const decAwards = [];
+  getMedalsForPerson(decRower.name, decType).forEach(m => {
+    decAwards.push(`${m.year} ${m.placement} (${m.boat})`);
+  });
+  (decRower.individualAwards || []).forEach(a => {
+    decAwards.push(`${a.year} ${a.award}`);
+  });
+  if (decRower.captain) decAwards.push("Team Captain");
+  const awardsDetail = decAwards.join(" · ") || "—";
+
+  overlay.innerHTML = `
+    <div class="hof-card">
+      <div class="hof-glow"></div>
+      <button class="hof-close"><i class="fa-solid fa-xmark"></i></button>
+      <div class="hof-header">
+        <div class="hof-header-icon"><i class="fa-solid fa-trophy"></i></div>
+        <div class="hof-title">Hall of Fame</div>
+        <div class="hof-sub hof-sub-years">(2025 — Present)</div>
+      </div>
+      <div class="hof-grid">
+        <div class="hof-category" style="--hof-delay:0.1s">
+          <div class="hof-cat-icon"><i class="fa-solid fa-gauge-high"></i></div>
+          <div class="hof-cat-label">Fastest Erg</div>
+          <div class="hof-cat-name">${data.fastestErg.name}</div>
+          <div class="hof-cat-value">${data.fastestErg.twoK}</div>
+          <div class="hof-cat-detail">${scoreToWatts(data.fastestErg.twoK)} W</div>
+        </div>
+        <div class="hof-category" style="--hof-delay:0.2s">
+          <div class="hof-cat-icon"><i class="fa-solid fa-weight-scale"></i></div>
+          <div class="hof-cat-label">Pound for Pound</div>
+          <div class="hof-cat-name">${data.poundForPound.rower.name}</div>
+          <div class="hof-cat-value">${data.poundForPound.ratio.toFixed(2)} Power/Weight</div>
+          <div class="hof-cat-detail">${data.poundForPound.rower.weight} lbs · ${data.poundForPound.rower.twoK}</div>
+        </div>
+        <div class="hof-category" style="--hof-delay:0.3s">
+          <div class="hof-cat-icon"><i class="fa-solid fa-crown"></i></div>
+          <div class="hof-cat-label">Most Decorated</div>
+          <div class="hof-cat-name">${data.mostDecorated.rower.name}</div>
+          <div class="hof-cat-value">${data.mostDecorated.score} pts</div>
+          <div class="hof-cat-detail hof-awards-detail">${awardsDetail}</div>
+        </div>
+        <div class="hof-category" style="--hof-delay:0.4s">
+          <div class="hof-cat-icon"><i class="fa-solid fa-ship"></i></div>
+          <div class="hof-cat-label">Greatest Boat</div>
+          <div class="hof-cat-name">${data.greatestBoat.lineup.name} (${data.greatestBoat.lineup.year})</div>
+          <div class="hof-cat-value">${data.greatestBoat.ovr} OVR</div>
+          <div class="hof-cat-detail">${data.greatestBoat.lineup.rowers.join(" · ")}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  overlay.querySelector(".hof-close").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  // trigger entrance animation
+  requestAnimationFrame(() => overlay.querySelector(".hof-card").classList.add("hof-card-visible"));
+}
 
 // ---------- Init ----------
 

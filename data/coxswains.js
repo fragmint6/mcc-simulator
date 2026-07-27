@@ -7,7 +7,12 @@ const COXSWAINS_DATA = [
     "tech_calls": 4.7,
     "steering": 4.9,
     "weight": 105,
-    "year": 2025
+    "year": 2025,
+    "individualAwards": [
+      { "year": 2025, "award": "First Team" },
+      { "year": 2025, "award": "Most Valuable Player" }
+    ],
+    "captain": true
   },
   {
     "name": "Alexander Tran",
