@@ -106,8 +106,8 @@ class RaceSimulation {
     const points = 21;
     const peak = totalWatts * 0.5;
     const techVal = Math.min(5, Math.max(0.1, avgTech || 5));
-    const noiseLevel = (5 - techVal) / 5;
-    const maxJitter = noiseLevel * peak * 0.22;
+    const badRaw = (5 - techVal) / 5;
+    const bad = badRaw * badRaw;
     const skewBase = this.deterministic ? 0.7 : 0.65 + Math.random() * 0.1;
     const startPow = this.deterministic ? 1.0 : 0.85 + Math.random() * 0.3;
     const endPow = this.deterministic ? 1.45 : 1.2 + Math.random() * 0.5;
@@ -117,15 +117,28 @@ class RaceSimulation {
     const startAngle = Math.max(0, Math.min(60, baseStart + (this.deterministic ? 0 : (Math.random() - 0.5) * 5)));
     const endAngle = Math.max(-35, Math.min(0, baseEnd + (this.deterministic ? 0 : (Math.random() - 0.5) * 5)));
     const range = startAngle - endAngle;
+    const s1 = this.deterministic ? 0 : Math.random() * 10;
+    const s2 = this.deterministic ? 0 : Math.random() * 10;
+    const s3 = this.deterministic ? 0 : Math.random() * 10;
     const curve = [];
     for (let i = 0; i < points; i++) {
       const angle = startAngle - i * range / (points - 1);
       const t = i / (points - 1);
       const skewed = Math.pow(t, skewBase);
-      let value = peak * Math.pow(Math.sin(Math.PI * skewed), skewed <= 0.5 ? startPow : endPow);
-      const phaseMod = Math.sin(Math.PI * skewed);
-      const jitter = this.deterministic ? 0 : (Math.random() - 0.5) * 2 * maxJitter * phaseMod;
-      curve.push({ x: Math.round(angle), y: Math.round(Math.max(0, value + jitter)) });
+      // phase distortion — shifts power timing, creates unevenness
+      const phaseWarp = bad * (0.12 * Math.sin(t * 7.3 + s1) + 0.06 * Math.sin(t * 15.1 + s2));
+      const warped = skewed + phaseWarp;
+      // amplitude modulation — multi-frequency troughs & peaks
+      const ampMod = 1 - bad * 0.55 + bad * 0.55 * (0.6 * Math.sin(t * 8.7 + s3) + 0.4 * Math.sin(t * 18.3 + s1 * 2));
+      // plateau — power stalls then jumps
+      const platCenter = 0.25 + Math.sin(s2) * 0.2;
+      const platWidth = 0.08 + bad * 0.12;
+      const platDepth = bad * 0.7;
+      const plateau = 1 - platDepth * Math.exp(-Math.pow((warped - platCenter) / platWidth, 6));
+      const effectivePow = warped <= 0.5 ? startPow : endPow;
+      let sinVal = Math.sin(Math.PI * Math.max(0.01, Math.min(0.99, warped)));
+      let value = peak * ampMod * plateau * Math.pow(sinVal, effectivePow);
+      curve.push({ x: Math.round(angle), y: Math.round(Math.max(0, value)) });
     }
     return curve;
   }

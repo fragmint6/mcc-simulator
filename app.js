@@ -2209,8 +2209,8 @@ function showRaceSummaryPopup() {
       type: "scatter",
       data: {
         datasets: [
-          { label: commentary.short("boat1"), data: d1, borderColor: "#e53935", backgroundColor: "rgba(229,57,53,0.15)", pointRadius: 0, borderWidth: 2, showLine: true, tension: 0.2 },
-          { label: commentary.short("boat2"), data: d2, borderColor: "#1e88e5", backgroundColor: "rgba(30,136,229,0.15)", pointRadius: 0, borderWidth: 2, showLine: true, tension: 0.2 }
+          { label: commentary.short("boat1"), data: d1, borderColor: "#1e88e5", backgroundColor: "rgba(30,136,229,0.15)", pointRadius: 0, borderWidth: 2, showLine: true, tension: 0.2 },
+          { label: commentary.short("boat2"), data: d2, borderColor: "#e53935", backgroundColor: "rgba(229,57,53,0.15)", pointRadius: 0, borderWidth: 2, showLine: true, tension: 0.2 }
         ]
       },
       options: {

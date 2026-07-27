@@ -1939,8 +1939,8 @@ body {
 }
 .rs-result-col { text-align: center; }
 .rs-boat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
-.rs-boat-label.rs-rp { color: #ef5350; }
-.rs-boat-label.rs-tc { color: #42a5f5; }
+.rs-boat-label.rs-rp { color: #42a5f5; }
+.rs-boat-label.rs-tc { color: #ef5350; }
 .rs-time { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
 .rs-vs { color: rgba(255,255,255,0.2); font-size: 1.1rem; }
 .rs-margin { text-align: center; font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 6px; }
