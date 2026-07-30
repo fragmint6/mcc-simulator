@@ -15,11 +15,11 @@ Each boat receives a **Boat Performance** score.
 ```text
 BoatPerformance =
 TotalWatts
-× TechFactor
-× MassFactor
-× ChemistryFactor
-× MentalityFactor
-× CoxFactor
+Ã— TechFactor
+Ã— MassFactor
+Ã— ChemistryFactor
+Ã— MentalityFactor
+Ã— CoxFactor
 ```
 
 Where:
@@ -32,7 +32,7 @@ The sum of every rower's base power.
 
 ```text
 TotalWatts =
-Σ(BasePower)
+Î£(BasePower)
 ```
 
 ---
@@ -43,10 +43,10 @@ Higher average technique transfers power more efficiently into boat speed.
 
 ```text
 TechFactor =
-0.60 + 0.08 × AverageTechnique
+0.60 + 0.08 Ã— AverageTechnique
 ```
 
-AverageTechnique is the average technique (0–5 stars) of the eight rowers on their raced side.
+AverageTechnique is the average technique (0â€“5 stars) of the eight rowers on their raced side.
 
 ---
 
@@ -60,7 +60,7 @@ Raw =
 (TotalCrewWeight + CoxWeight + 100)
 
 MassFactor =
-1 + (Raw - 1) × 0.6
+1 + (Raw - 1) Ã— 0.6
 ```
 
 This is identical to the race engine.
@@ -73,7 +73,7 @@ Experienced lineups row together more efficiently.
 
 ```text
 ChemistryFactor =
-0.98 + 0.0004 × Chemistry
+0.98 + 0.0004 Ã— Chemistry
 ```
 
 | Chemistry | Factor |
@@ -92,7 +92,7 @@ Higher mentality allows crews to maintain speed throughout the race.
 
 ```text
 MentalityFactor =
-0.97 + 0.01 × AverageMentality
+0.97 + 0.01 Ã— AverageMentality
 ```
 
 | Avg Mentality | Factor |
@@ -203,7 +203,7 @@ Then calculate the predicted margin.
 
 ```text
 PredictedMarginSeconds =
-35 × RelativeDifference^0.44
+35 Ã— RelativeDifference^0.44
 ```
 
 Where:
@@ -245,13 +245,13 @@ McLean by 6.8 seconds
 
 | Win Probability | Confidence |
 |----------------:|------------|
-| 0–20% | Coughing Baby |
-| 20–30% | No Chance |
-| 30–40% | Disadvantage |
-| 40–60% | Coin Flip |
-| 60–70% | Slight Edge |
-| 70–80% | Heavy Favorite |
-| 80–100% | Hydrogen Bomb |
+| 0â€“20% | Coughing Baby |
+| 20â€“30% | No Chance |
+| 30â€“40% | Disadvantage |
+| 40â€“60% | Coin Flip |
+| 60â€“70% | Slight Edge |
+| 70â€“80% | Heavy Favorite |
+| 80â€“100% | Hydrogen Bomb |
 
 ---
 

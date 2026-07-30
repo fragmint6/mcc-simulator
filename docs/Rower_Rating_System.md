@@ -10,10 +10,10 @@ First calculate the player's **Base OVR**.
 
 ```text
 BaseOVR =
-0.50 × R2k +
-0.25 × RTech +
-0.15 × RPW +
-0.10 × RMental
+0.50 Ã— R2k +
+0.25 Ã— RTech +
+0.15 Ã— RPW +
+0.10 Ã— RMental
 ```
 
 Then apply the medal bonus.
@@ -31,7 +31,7 @@ Calculated continuously without rounding 2k times to preserve precise performanc
 
 ```text
 R2k =
-92 - ((Total2kSeconds - 390) / 5) × 3
+92 - ((Total2kSeconds - 390) / 5) Ã— 3
 ```
 
 ### Benchmark Examples
@@ -61,7 +61,7 @@ When the seat is unknown:
 
 ```text
 TechniqueStars =
-(2 × max(PortTech, StarboardTech) +
+(2 Ã— max(PortTech, StarboardTech) +
 min(PortTech, StarboardTech)) / 3
 ```
 
@@ -69,7 +69,7 @@ Convert to rating:
 
 ```text
 RTech =
-18 × TechniqueStars + 9
+18 Ã— TechniqueStars + 9
 ```
 
 ### Benchmarks
@@ -103,7 +103,7 @@ Watts / WeightLbs
 
 ```text
 RPW =
-max(50, min(99, PowerToWeight × 38))
+max(50, min(99, PowerToWeight Ã— 38))
 ```
 
 ---
@@ -112,7 +112,7 @@ max(50, min(99, PowerToWeight × 38))
 
 ```text
 RMental =
-18 × MentalityStars + 9
+18 Ã— MentalityStars + 9
 ```
 
 ---
@@ -123,9 +123,9 @@ All medals represent **VHSL State Championship medals**.
 
 | Medal | Bonus |
 |------:|------:|
-| 🥇 Gold | +1.5 |
-| 🥈 Silver | +1.0 |
-| 🥉 Bronze | +0.5 |
+| ðŸ¥‡ Gold | +1.5 |
+| ðŸ¥ˆ Silver | +1.0 |
+| ðŸ¥‰ Bronze | +0.5 |
 
 Calculate:
 
@@ -133,9 +133,9 @@ Calculate:
 MedalBonus =
 min(
 4,
-1.5 × Gold +
-1.0 × Silver +
-0.5 × Bronze
+1.5 Ã— Gold +
+1.0 Ã— Silver +
+0.5 Ã— Bronze
 )
 ```
 
@@ -147,10 +147,10 @@ The medal bonus is capped at **+4 OVR**.
 
 ```text
 BaseOVR =
-0.50 × R2k +
-0.25 × RTech +
-0.15 × RPW +
-0.10 × RMental
+0.50 Ã— R2k +
+0.25 Ã— RTech +
+0.15 Ã— RPW +
+0.10 Ã— RMental
 
 FinalOVR =
 Round(BaseOVR + MedalBonus)

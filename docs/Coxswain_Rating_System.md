@@ -10,9 +10,9 @@ First calculate the **Base OVR**.
 
 ```text
 BaseOVR =
-18 × WeightedStars +
+18 Ã— WeightedStars +
 9 +
-4 × (WeightedStars - 4)^2
+4 Ã— (WeightedStars - 4)^2
 ```
 
 Then apply weight adjustment and medal bonus.
@@ -30,14 +30,14 @@ MedalBonus
 
 # 1. Weighted Stars
 
-Each coxswain is rated from **1.0–5.0 stars** in four attributes.
+Each coxswain is rated from **1.0â€“5.0 stars** in four attributes.
 
 ```text
 WeightedStars =
-0.28 × Motivation +
-0.18 × Strategy +
-0.14 × TechCalls +
-0.35 × Steering
+0.28 Ã— Motivation +
+0.18 Ã— Strategy +
+0.14 Ã— TechCalls +
+0.35 Ã— Steering
 ```
 
 ### Attribute Weights
@@ -59,9 +59,9 @@ Convert weighted stars into an overall rating.
 
 ```text
 BaseOVR =
-18 × WeightedStars +
+18 Ã— WeightedStars +
 9 +
-4 × (WeightedStars - 4)^2
+4 Ã— (WeightedStars - 4)^2
 ```
 
 The nonlinear bonus rewards elite coxswains more heavily.
@@ -100,9 +100,9 @@ All medals represent **VHSL State Championship medals**.
 
 | Medal | Bonus |
 |------:|------:|
-| 🥇 Gold | +1.5 |
-| 🥈 Silver | +1.0 |
-| 🥉 Bronze | +0.5 |
+| ðŸ¥‡ Gold | +1.5 |
+| ðŸ¥ˆ Silver | +1.0 |
+| ðŸ¥‰ Bronze | +0.5 |
 
 Calculate:
 
@@ -110,9 +110,9 @@ Calculate:
 MedalBonus =
 min(
 4,
-1.5 × Gold +
-1.0 × Silver +
-0.5 × Bronze
+1.5 Ã— Gold +
+1.0 Ã— Silver +
+0.5 Ã— Bronze
 )
 ```
 
@@ -125,9 +125,9 @@ The medal bonus is capped at **+4 OVR**.
 ```text
 FinalOVR =
 Round(
-18 × WeightedStars +
+18 Ã— WeightedStars +
 9 +
-4 × (WeightedStars - 4)^2 +
+4 Ã— (WeightedStars - 4)^2 +
 (105 - WeightLbs) / 10 +
 MedalBonus
 )

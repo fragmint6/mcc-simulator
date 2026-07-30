@@ -5,16 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>McLean Crew Simulator</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800;900&family=Space+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
+<!-- Ambient animated backdrop -->
+<div class="bg-scene" aria-hidden="true">
+  <span class="aurora aurora-1"></span>
+  <span class="aurora aurora-2"></span>
+  <span class="aurora aurora-3"></span>
+  <span class="aurora aurora-4"></span>
+</div>
+
 <nav class="top-nav">
   <div class="top-nav-left">
     <img src="mclean-crew-logo.png" alt="McLean Crew" class="nav-logo" />
-    <span class="nav-title">McLean Crew Simulator</span>
+    <div class="nav-title-block">
+      <span class="nav-title">McLean Crew</span>
+      <span class="nav-subtitle">Race Simulator</span>
+    </div>
   </div>
   <div class="top-nav-right">
     <button id="hofBtn" class="btn btn-hof"><i class="fa-solid fa-trophy"></i> Hall of Fame</button>
@@ -24,27 +38,33 @@
 <main class="grid">
 
   <!-- Panel: List of Rowers -->
-  <section class="panel" id="panel-roster">
-    <h2>Rowers</h2>
-    <div class="panel-sub">Click a rower to assign to a seat</div>
-    <input type="text" id="rowerSearch" class="search-bar" placeholder="Search rowers..." />
+  <section class="panel" id="panel-roster" style="--i:0">
+    <h2><i class="fa-solid fa-users"></i> Rowers</h2>
+    <div class="panel-sub">Click a rower to assign them to a seat</div>
+    <div class="search-wrap">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="rowerSearch" class="search-bar" placeholder="Search rowers..." />
+    </div>
     <ul id="rowerList" class="rower-list" data-zone="roster"></ul>
   </section>
 
   <!-- Panel: List of Coxswains -->
-  <section class="panel" id="panel-coxswains">
-    <h2>Coxswains</h2>
-    <div class="panel-sub">Click a coxswain to assign to a boat</div>
-    <input type="text" id="coxswainSearch" class="search-bar" placeholder="Search coxswains..." />
+  <section class="panel" id="panel-coxswains" style="--i:1">
+    <h2><i class="fa-solid fa-bullhorn"></i> Coxswains</h2>
+    <div class="panel-sub">Click a coxswain to assign them to a boat</div>
+    <div class="search-wrap">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="coxswainSearch" class="search-bar" placeholder="Search coxswains..." />
+    </div>
     <ul id="coxswainList" class="rower-list" data-zone="coxswains"></ul>
   </section>
 
   <!-- Panel: Richard Paul -->
-  <section class="panel" id="panel-boat1">
+  <section class="panel panel-boat1" id="panel-boat1" style="--i:2">
     <h2><span class="boat-dot dot-1"></span>Richard Paul</h2>
     <div class="boat-btn-row">
-      <button class="btn-lineup" data-boat="boat1">Load Lineup</button>
-      <button class="btn-randomize" data-boat="boat1">Randomize</button>
+      <button class="btn-lineup" data-boat="boat1"><i class="fa-solid fa-clock-rotate-left"></i> Load Lineup</button>
+      <button class="btn-randomize" data-boat="boat1"><i class="fa-solid fa-shuffle"></i> Randomize</button>
     </div>
     <div class="panel-sub" id="boat1Meta">0 / 8 seats filled</div>
     <div class="boat-seats" id="boat1Seats"></div>
@@ -52,11 +72,11 @@
   </section>
 
   <!-- Panel: The Challenger -->
-  <section class="panel" id="panel-boat2">
+  <section class="panel panel-boat2" id="panel-boat2" style="--i:3">
     <h2><span class="boat-dot dot-2"></span>The Challenger</h2>
     <div class="boat-btn-row">
-      <button class="btn-lineup" data-boat="boat2">Load Lineup</button>
-      <button class="btn-randomize" data-boat="boat2">Randomize</button>
+      <button class="btn-lineup" data-boat="boat2"><i class="fa-solid fa-clock-rotate-left"></i> Load Lineup</button>
+      <button class="btn-randomize" data-boat="boat2"><i class="fa-solid fa-shuffle"></i> Randomize</button>
     </div>
     <div class="panel-sub" id="boat2Meta">0 / 8 seats filled</div>
     <div class="boat-seats" id="boat2Seats"></div>
@@ -64,11 +84,11 @@
   </section>
 
   <!-- Panel: Race Course -->
-  <section class="panel panel-wide" id="panel-course">
+  <section class="panel panel-wide panel-course" id="panel-course" style="--i:4">
     <div class="controls-bar">
-      <span class="controls-title"><i class="fa-solid fa-flag-checkered"></i> Race</span>
+      <span class="controls-title"><i class="fa-solid fa-flag-checkered"></i> Race Control</span>
       <div class="controls-buttons">
-        <button id="startBtn" class="btn btn-start"><i class="fa-solid fa-play"></i> Start</button>
+        <button id="startBtn" class="btn btn-start"><i class="fa-solid fa-play"></i> Start Race</button>
         <button id="stopBtn" class="btn btn-stop" disabled><i class="fa-solid fa-pause"></i> Pause</button>
         <button id="resetBtn" class="btn btn-reset"><i class="fa-solid fa-rotate-left"></i> Reset</button>
         <button id="resultsBtn" class="btn btn-results" style="display:none"><i class="fa-solid fa-chart-simple"></i> Results</button>
@@ -76,12 +96,22 @@
       <div class="win-probs" id="winProbs"></div>
     </div>
     <div class="course" id="course">
+      <canvas id="waterCanvas" aria-hidden="true"></canvas>
+      <div class="course-hud">
+        <span id="liveBadge" class="live-badge"></span>
+        <span class="hud-spacer"></span>
+        <span id="gapChip" class="gap-chip" data-leader="0">&mdash;</span>
+        <span id="raceClock" class="race-clock">0:00.0</span>
+      </div>
+      <div class="start-line" aria-hidden="true"></div>
       <div class="lane-divider">
         <span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span>
       </div>
       <div class="course-lane" id="lane1">
-        <div class="lane-label">Richard Paul</div>
+        <div class="lane-label"><span class="lane-dot lane-dot-1"></span>Richard Paul</div>
         <div class="lane-track">
+          <div class="dist-tick" data-m="500"><span class="dist-tick-label">500m</span></div>
+          <div class="dist-tick" data-m="1000"><span class="dist-tick-label">1000m</span></div>
           <div class="boat-marker boat-marker-1" id="marker1"></div>
         </div>
       </div>
@@ -89,30 +119,32 @@
         <span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span>
       </div>
       <div class="course-lane" id="lane2">
-        <div class="lane-label">The Challenger</div>
+        <div class="lane-label"><span class="lane-dot lane-dot-2"></span>The Challenger</div>
         <div class="lane-track">
+          <div class="dist-tick" data-m="500"><span class="dist-tick-label">500m</span></div>
+          <div class="dist-tick" data-m="1000"><span class="dist-tick-label">1000m</span></div>
           <div class="boat-marker boat-marker-2" id="marker2"></div>
         </div>
       </div>
       <div class="lane-divider">
         <span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span><span class="buoy"></span>
       </div>
-      <div class="finish-line"></div>
+      <div class="finish-line"><i class="fa-solid fa-flag-checkered"></i><span class="finish-label">1500m</span></div>
     </div>
     <div class="commentary" id="commentary">
-      <div class="commentary-header"><i class="fa-solid fa-microphone"></i> Commentary</div>
+      <div class="commentary-header"><i class="fa-solid fa-microphone-lines"></i> Race Day Broadcast</div>
       <div class="commentary-feed" id="commentaryFeed"></div>
     </div>
   </section>
 
   <!-- Panel: Telemetry -->
-  <section class="panel panel-wide" id="panel-telemetry">
-    <h2>Telemetry</h2>
+  <section class="panel panel-wide" id="panel-telemetry" style="--i:5">
+    <h2><i class="fa-solid fa-chart-line"></i> Telemetry</h2>
     <div class="telemetry-grid">
       <div class="telemetry-stats">
         <table class="stat-table">
           <thead>
-            <tr><th></th><th>Richard Paul</th><th>The Challenger</th></tr>
+            <tr><th></th><th><span class="boat-dot dot-1"></span>Richard Paul</th><th><span class="boat-dot dot-2"></span>The Challenger</th></tr>
           </thead>
           <tbody>
             <tr><td>Time</td><td id="t1-time">0:00.0</td><td id="t2-time">0:00.0</td></tr>
@@ -120,17 +152,17 @@
             <tr><td>Speed</td><td id="t1-speed">0.0 m/s</td><td id="t2-speed">0.0 m/s</td></tr>
             <tr><td>Split /500m</td><td id="t1-split">--:--</td><td id="t2-split">--:--</td></tr>
             <tr><td>Stroke Rate</td><td id="t1-rate">0 spm</td><td id="t2-rate">0 spm</td></tr>
-            <tr><td>Steering</td><td id="t1-steer">0°</td><td id="t2-steer">0°</td></tr>
+            <tr><td>Steering</td><td id="t1-steer">0.0 <i class="fa-solid fa-arrow-up steer-needle"></i></td><td id="t2-steer">0.0 <i class="fa-solid fa-arrow-up steer-needle"></i></td></tr>
           </tbody>
         </table>
       </div>
       <div class="telemetry-charts">
-        <div class="telemetry-chart">
-          <div class="chart-header chart-header-1">Richard Paul</div>
+        <div class="telemetry-chart" data-boat="1">
+          <div class="chart-header chart-header-1"><span class="chart-dot"></span>Richard Paul &mdash; Power Curve</div>
           <canvas id="speedChart1" height="200"></canvas>
         </div>
-        <div class="telemetry-chart">
-          <div class="chart-header chart-header-2">The Challenger</div>
+        <div class="telemetry-chart" data-boat="2">
+          <div class="chart-header chart-header-2"><span class="chart-dot"></span>The Challenger &mdash; Power Curve</div>
           <canvas id="speedChart2" height="200"></canvas>
         </div>
       </div>
@@ -138,11 +170,11 @@
   </section>
 
   <!-- Panel: Individual Rower Telemetry -->
-  <section class="panel panel-wide" id="panel-rower-telemetry">
-    <h2>Per-Stroke Rower Data</h2>
+  <section class="panel panel-wide" id="panel-rower-telemetry" style="--i:6">
+    <h2><i class="fa-solid fa-table-list"></i> Per-Stroke Rower Data</h2>
     <div class="rower-telemetry-grid">
       <div class="rower-telemetry-col">
-        <h3 class="rt-boat-label rt-boat1">Richard Paul</h3>
+        <h3 class="rt-boat-label rt-boat1"><span class="boat-dot dot-1"></span>Richard Paul</h3>
         <table class="rt-table" id="rt1-table">
           <thead>
             <tr><th>Seat</th><th>Name</th><th>Wt</th><th>Base W</th><th>Eff W</th><th>Tech</th><th>Mod</th><th>Eff Tech</th></tr>
@@ -151,7 +183,7 @@
         </table>
       </div>
       <div class="rower-telemetry-col">
-        <h3 class="rt-boat-label rt-boat2">The Challenger</h3>
+        <h3 class="rt-boat-label rt-boat2"><span class="boat-dot dot-2"></span>The Challenger</h3>
         <table class="rt-table" id="rt2-table">
           <thead>
             <tr><th>Seat</th><th>Name</th><th>Wt</th><th>Base W</th><th>Eff W</th><th>Tech</th><th>Mod</th><th>Eff Tech</th></tr>
@@ -173,12 +205,23 @@
   </div>
 </div>
 
+<!-- Race start countdown overlay -->
+<div id="startOverlay" class="start-overlay" aria-hidden="true">
+  <div class="cd-stage">
+    <div class="cd-ring"></div>
+    <div class="cd-ring cd-ring-2"></div>
+    <div class="cd-text" id="cdText">ATTENTION</div>
+    <div class="cd-sub" id="cdSub">hands on</div>
+  </div>
+</div>
+
 <script type="module" src="firebase.js"></script>
 <script src="data/rowers.js"></script>
 <script src="data/coxswains.js"></script>
 <script src="data/lineups.js"></script>
 <script src="simulation.js"></script>
 <script src="app.js"></script>
+<script src="fx.js"></script>
 
 </body>
 </html>

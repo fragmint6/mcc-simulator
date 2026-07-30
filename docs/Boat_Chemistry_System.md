@@ -7,7 +7,7 @@ The goal of chemistry is to estimate how comfortable a lineup is rowing together
 - Graduation year familiarity
 - Previous lineups in the historical database
 
-Boat chemistry is displayed as a percentage from **0–100**.
+Boat chemistry is displayed as a percentage from **0â€“100**.
 
 ---
 
@@ -97,7 +97,7 @@ Examples:
 Convert overlap into chemistry:
 
 ```text
-LineupBonus = 80 × Overlap
+LineupBonus = 80 Ã— Overlap
 ```
 
 Examples:

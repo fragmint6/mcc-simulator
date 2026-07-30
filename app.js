@@ -207,7 +207,7 @@ function showLineupPopup(boatKey) {
         <button class="lineup-option" data-idx="${origIdx}">
           <div class="lineup-option-text">
             <span class="lineup-option-name"><span class="medal-year">${l.year}</span> <span class="medal-boat">${l.name}</span></span>
-            <span class="lineup-option-detail">${(l.rowers || []).length} rowers${l.coxswain ? ' · ' + l.coxswain : ''}</span>
+            <span class="lineup-option-detail">${(l.rowers || []).length} rowers${l.coxswain ? ' <i class="fa-solid fa-circle dot-sep"></i> ' + l.coxswain : ''}</span>
           </div>
           <span class="lineup-option-ovr" style="background:${rs.color}">${ovr}</span>
         </button>`;
@@ -237,6 +237,7 @@ function showLineupPopup(boatKey) {
 
         overlay.remove();
         renderAll();
+        _replaySeatStagger(boatKey);
       });
       btn.addEventListener("mouseenter", (e) => {
         if (lineup) showLineupHoverCard(lineup, e.currentTarget);
@@ -270,6 +271,7 @@ function randomizeBoat(boatKey) {
   const coxIndex = Math.floor(Math.random() * coxswains.length);
   boatCoxswains[boatKey] = coxswains[coxIndex].id;
   renderAll();
+  _replaySeatStagger(boatKey);
 }
 
 function computeCOXR(c) {
@@ -397,10 +399,10 @@ const SIM_SPEED = 2;
 // of travel) with 4 oars per side that swing fore/aft through a stroke cycle
 // (catch -> drive -> finish -> recovery). Oar phase is driven every animation
 // frame based on each boat's current stroke rate.
-function buildBoatSVG(colorMain, colorAccent) {
+function buildBoatSVG(uid, colorMain, colorDark, colorBlade) {
   const hullTopY = 38;
   const hullBottomY = 52;
-  const oarLength = 24;
+  const oarLength = 26;
 
   const oarSide = (direction) => {
     // direction: -1 = oars mounted on the top edge (swing above the hull),
@@ -413,26 +415,74 @@ function buildBoatSVG(colorMain, colorAccent) {
       const tipY = oarlockY + direction * oarLength;
       oars += `
         <g class="oar-group" data-side="${direction}" data-seat="${i}" style="transform-origin: ${cx}px ${oarlockY}px;">
-          <line class="oar-shaft" x1="${cx}" y1="${oarlockY}" x2="${cx}" y2="${tipY}" />
-          <rect class="oar-blade" x="${cx - 4}" y="${direction === -1 ? tipY - 8 : tipY}" width="8" height="8" rx="1.5" style="transform-origin: ${cx}px ${direction === -1 ? tipY - 4 : tipY + 4}px;" />
+          <line class="oar-shaft" x1="${cx}" y1="${oarlockY}" x2="${cx - 2}" y2="${tipY}" />
+          <rect class="oar-blade" x="${cx - 5}" y="${direction === -1 ? tipY - 9 : tipY}" width="9" height="9" rx="2.2" style="transform-origin: ${cx - 0.5}px ${direction === -1 ? tipY - 4.5 : tipY + 4.5}px;" />
         </g>`;
     }
     return oars;
   };
 
+  // 8 interleaved crew dots, stern (left) to bow (right), matching oar geometry
+  let rowerDots = "";
+  for (let i = 0; i < 8; i++) {
+    const x = 20 + Math.floor(i / 2) * 22 + (i % 2 === 1 ? 8 : 0);
+    rowerDots += `<circle class="rower-dot" data-seat="${i}" cx="${x}" cy="45" r="3" />`;
+  }
+
+  // Rigger struts from hull edge out to the oarlocks
+  let riggers = "";
+  for (let i = 0; i < 4; i++) {
+    const cxT = 20 + i * 22, cxB = 28 + i * 22;
+    riggers += `<line class="rigger" x1="${cxT}" y1="${hullTopY}" x2="${cxT}" y2="${hullTopY - 3}" />`;
+    riggers += `<line class="rigger" x1="${cxB}" y1="${hullBottomY}" x2="${cxB}" y2="${hullBottomY + 3}" />`;
+  }
+
   return `
     <svg class="boat-svg" viewBox="-20 -40 140 170" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="hullG-${uid}" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="${colorDark}"/>
+          <stop offset="42%" stop-color="${colorMain}"/>
+          <stop offset="100%" stop-color="${colorMain}" stop-opacity="0.92"/>
+        </linearGradient>
+        <linearGradient id="deckG-${uid}" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.42"/>
+          <stop offset="55%" stop-color="#ffffff" stop-opacity="0.12"/>
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0.02"/>
+        </linearGradient>
+        <radialGradient id="glowG-${uid}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="${colorMain}" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="${colorMain}" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="wakeG-${uid}" cx="88%" cy="50%" r="85%">
+          <stop offset="0%" stop-color="#e6f6ff" stop-opacity="0.55"/>
+          <stop offset="55%" stop-color="#a5dcff" stop-opacity="0.14"/>
+          <stop offset="100%" stop-color="#a5dcff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <ellipse class="boat-glow" cx="57" cy="45" rx="54" ry="14" fill="url(#glowG-${uid})"/>
+      <path class="wake-ribbon" d="M14 41 C -6 40, -34 41, -62 44 C -34 47, -6 50, 14 49 Z" fill="url(#wakeG-${uid})"/>
+      <ellipse class="boat-shadow" cx="57" cy="47.5" rx="48" ry="8.5" fill="#020814" opacity="0.5"/>
+
       <g class="oars oars-top">${oarSide(-1)}</g>
       <g class="oars oars-bottom">${oarSide(1)}</g>
+      ${riggers}
+
       <path class="hull" d="M100 45 C100 41, 96 ${hullTopY}, 90 ${hullTopY} L22 ${hullTopY} C17 ${hullTopY}, 14 41, 14 45 C14 49, 17 ${hullBottomY}, 22 ${hullBottomY} L90 ${hullBottomY} C96 ${hullBottomY}, 100 49, 100 45 Z"
-        fill="${colorMain}" stroke="${colorAccent}" stroke-width="2" />
-      <ellipse class="hull-highlight" cx="57" cy="45" rx="34" ry="5" fill="${colorAccent}" opacity="0.25" />
+        fill="url(#hullG-${uid})" stroke="${colorDark}" stroke-width="1.6" />
+      <line class="deck-line" x1="19" y1="45" x2="95" y2="45" stroke="url(#deckG-${uid})" stroke-width="3.4" />
+      <path class="hull-highlight" d="M22 40.6 L88 40.6" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.1" fill="none" />
+      <path class="bow-flash" d="M92.5 39.8 L98.5 45 L92.5 50.2" fill="none" stroke="#ffffff" stroke-opacity="0.65" stroke-width="1.5" />
+
+      <g class="crew">${rowerDots}</g>
+      <circle class="cox-dot" cx="16.8" cy="45" r="2.6" />
     </svg>
   `;
 }
 
-marker1.innerHTML = buildBoatSVG("#3fb6ff", "#1c7fb8");
-marker2.innerHTML = buildBoatSVG("#ff6b6b", "#c94848");
+marker1.innerHTML = '<div class="boat-inner">' + buildBoatSVG("b1", "#42d4ff", "#0d79b8", "#8fe8ff") + "</div>";
+marker2.innerHTML = '<div class="boat-inner">' + buildBoatSVG("b2", "#ff5f7e", "#b8324e", "#ff9db0") + "</div>";
 
 function findRower(id) {
   return rowers.find(r => r.id === id);
@@ -450,7 +500,7 @@ function renderRosterList() {
     .filter(r => r.twoK != null && r.port != null && r.starboard != null && r.mentality != null && r.rarity != null)
     .filter(r => !term || r.name.toLowerCase().includes(term))
     .sort((a, b) => a.name.localeCompare(b.name))
-    .forEach(r => rowerListEl.appendChild(createRowerCard(r)));
+    .forEach((r, i) => { const card = createRowerCard(r); card.style.setProperty("--i", Math.min(i, 26)); rowerListEl.appendChild(card); });
 }
 
 function shortName(name) {
@@ -499,7 +549,7 @@ function renderCoxswainList() {
     .filter(c => c.motivation != null && c.strategy != null && c.tech_calls != null && c.steering != null && c.rarity != null)
     .filter(c => !term || c.name.toLowerCase().includes(term))
     .sort((a, b) => a.name.localeCompare(b.name))
-    .forEach(c => coxswainListEl.appendChild(createCoxswainCard(c)));
+    .forEach((c, i) => { const card = createCoxswainCard(c); card.style.setProperty("--i", Math.min(i, 12)); coxswainListEl.appendChild(card); });
 }
 
 function createCoxswainCard(coxswain, clickable) {
@@ -603,15 +653,15 @@ function ensureHoverCard() {
 }
 
 const RARITY_STYLES = {
-  "Generational": { color: "#ff2020", label: "Generational", icon: "⬢" },
-  "Freak": { color: "#ff9f43", label: "Freak", icon: "★" },
-  "Pretty Good": { color: "#a359ff", label: "Pretty Good", icon: "■" },
-  "Mid": { color: "#4ade80", label: "Mid", icon: "▲" },
-  "Noob": { color: "#8fa3b3", label: "Noob", icon: "●" },
+  "Generational": { color: "#ff2020", label: "Generational", icon: '<i class="fa-solid fa-gem"></i>' },
+  "Freak": { color: "#ff9f43", label: "Freak", icon: '<i class="fa-solid fa-star"></i>' },
+  "Pretty Good": { color: "#a359ff", label: "Pretty Good", icon: '<i class="fa-solid fa-square"></i>' },
+  "Mid": { color: "#4ade80", label: "Mid", icon: '<i class="fa-solid fa-play tri-up"></i>' },
+  "Noob": { color: "#8fa3b3", label: "Noob", icon: '<i class="fa-solid fa-circle"></i>' },
 };
 
 function rarityStyle(rarity) {
-  return RARITY_STYLES[rarity] || { color: "#5a6b7c", label: rarity || "Unknown", icon: "?" };
+  return RARITY_STYLES[rarity] || { color: "#5a6b7c", label: rarity || "Unknown", icon: '<i class="fa-solid fa-question"></i>' };
 }
 
 function rarityFromOVR(ovr) {
@@ -685,7 +735,7 @@ function dotStars(value, max = 5) {
       html += `<span class="hc-dot filled"></span>`;
     } else if (i === full && partial > 0.01) {
       const pct = Math.round(partial * 100);
-      html += `<span class="hc-dot partial" style="background:linear-gradient(90deg,#f0b429 ${pct}%,#2c3c4d ${pct}%)"></span>`;
+      html += `<span class="hc-dot partial" style="--p:${pct}%"></span>`;
     } else {
       html += `<span class="hc-dot"></span>`;
     }
@@ -696,11 +746,11 @@ function dotStars(value, max = 5) {
 const shapeFA = { heart: "fa-heart", star: "fa-star", triangle: "fa-play", square: "fa-square", circle: "fa-circle" };
 const particleClip = { triangle: "polygon(50% 0%, 0% 100%, 100% 100%)", square: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)", circle: "circle(50%)" };
 const particleCfg = {
-  "Generational": { count: 55, sizes: [5, 20], anims: ["hc-rise","hc-rise-drift","hc-rise-spin","hc-rise-pulse"], glow: true, shape: "heart", icon: true },
-  "Freak":        { count: 35, sizes: [4, 15], anims: ["hc-rise","hc-rise-drift","hc-rise-spin"], glow: true, shape: "star", icon: true },
-  "Pretty Good":  { count: 22, sizes: [3, 11], anims: ["hc-rise","hc-rise-drift","hc-rise-spin","hc-rise-pulse"], glow: false, shape: "mixed", icon: false },
-  "Mid":          { count: 12, sizes: [3, 8],  anims: ["hc-rise","hc-rise-drift"], glow: false, shape: "circle", icon: false },
-  "Noob":         { count: 5,  sizes: [3, 5],  anims: ["hc-rise"], glow: false, shape: "circle", icon: false },
+  "Generational": { count: 18, sizes: [5, 14], anims: ["hc-rise","hc-rise-drift","hc-rise-spin"], glow: true, shape: "heart", icon: true },
+  "Freak":        { count: 12, sizes: [4, 12], anims: ["hc-rise","hc-rise-drift"], glow: true, shape: "star", icon: true },
+  "Pretty Good":  { count: 8,  sizes: [3, 9],  anims: ["hc-rise","hc-rise-drift"], glow: false, shape: "mixed", icon: false },
+  "Mid":          { count: 5,  sizes: [3, 7],  anims: ["hc-rise"], glow: false, shape: "circle", icon: false },
+  "Noob":         { count: 3,  sizes: [3, 5],  anims: ["hc-rise"], glow: false, shape: "circle", icon: false },
 };
 const genColors = ["#ff2020","#ff3333","#ff4444","#ff5555","#cc0000","#dd1111","#ee2222","#ff1111","#dd2222","#ff6666"];
 
@@ -1020,6 +1070,22 @@ function showAssignPopup(item, type) {
   renderAssignPopup();
 }
 
+function _replaySeatStagger(boatKey) {
+  const el = boatKey === "boat1" ? boat1SeatsEl : boat2SeatsEl;
+  if (!el) return;
+  el.classList.remove("replay-stagger");
+  void el.offsetWidth;
+  el.classList.add("replay-stagger");
+  setTimeout(() => el.classList.remove("replay-stagger"), 950);
+}
+
+function _flashSeat(boatKey, seatIndex) {
+  const el = document.querySelector(`.seat-slot[data-boat="${boatKey}"][data-seat-index="${seatIndex}"]`);
+  if (!el) return;
+  el.classList.add("seat-pop");
+  setTimeout(() => el.classList.remove("seat-pop"), 700);
+}
+
 function closeAssignPopup() {
   assignPopupData = null;
   const popupEl = document.getElementById("assignPopup");
@@ -1131,6 +1197,7 @@ function renderAssignPopup() {
       }
       renderAll();
       closeAssignPopup();
+      _flashSeat(boatKey, seatIndex);
     });
   });
 }
@@ -1162,15 +1229,30 @@ function crewSize(boatKey) {
 let speedChart1 = null;
 let speedChart2 = null;
 
-function buildChart(canvasId, lineColor, fillColor) {
-  return new Chart(document.getElementById(canvasId).getContext("2d"), {
+function _hexToRgb(hex) {
+  const h = hex.replace("#", "");
+  const v = parseInt(h.length === 3 ? h.split("").map(c => c + c).join("") : h, 16);
+  return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+}
+
+function buildChart(canvasId, lineColor) {
+  const ctx = document.getElementById(canvasId).getContext("2d");
+  const rgb = _hexToRgb(lineColor);
+  const grad = ctx.createLinearGradient(0, 0, 0, 230);
+  grad.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},0.42)`);
+  grad.addColorStop(0.55, `rgba(${rgb.r},${rgb.g},${rgb.b},0.12)`);
+  grad.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},0.01)`);
+  const tickColor = "#71809a";
+  const gridColor = "rgba(126,166,255,0.08)";
+  const axisFont = { family: "'Space Grotesk', sans-serif", size: 10, weight: "600" };
+  return new Chart(ctx, {
     type: "line",
     data: {
       datasets: [{
         label: "Watts",
         data: [],
         borderColor: lineColor,
-        backgroundColor: fillColor,
+        backgroundColor: grad,
         pointBackgroundColor: lineColor,
         pointBorderColor: lineColor,
         pointRadius: 0,
@@ -1192,14 +1274,16 @@ function buildChart(canvasId, lineColor, fillColor) {
           reverse: true,
           min: -35,
           max: 60,
-          title: { display: true, text: "angle", color: "#8fa3b3" },
-          ticks: { color: "#8fa3b3", stepSize: 5, maxTicksLimit: 25, callback: v => `${v}°` },
-          grid: { color: "#1f2c3a" },
+          title: { display: true, text: "catch angle", color: tickColor, font: axisFont },
+          ticks: { color: tickColor, stepSize: 5, maxTicksLimit: 25, font: axisFont, callback: v => `${v}\u00b0` },
+          grid: { color: gridColor },
+          border: { color: "rgba(126,166,255,0.16)" },
         },
         y: {
-          title: { display: true, text: "watts", color: "#8fa3b3" },
-          ticks: { color: "#8fa3b3" },
-          grid: { color: "#1f2c3a" },
+          title: { display: true, text: "watts", color: tickColor, font: axisFont },
+          ticks: { color: tickColor, font: axisFont },
+          grid: { color: gridColor },
+          border: { color: "rgba(126,166,255,0.16)" },
           beginAtZero: true,
           max: 2000,
         },
@@ -1212,8 +1296,8 @@ function buildChart(canvasId, lineColor, fillColor) {
 }
 
 function initChart() {
-  speedChart1 = buildChart("speedChart1", "#3fb6ff", "rgba(63,182,255,0.1)");
-  speedChart2 = buildChart("speedChart2", "#ff6b6b", "rgba(255,107,107,0.1)");
+  speedChart1 = buildChart("speedChart1", "#38d1ff");
+  speedChart2 = buildChart("speedChart2", "#ff5470");
 
   new ResizeObserver(() => {
     speedChart1?.resize();
@@ -1333,10 +1417,11 @@ function resetRaceState() {
   hasCatch2 = false;
   popupScheduled = false;
   commentary.clear();
-  marker1.style.left = "0%";
+  Object.keys(_oarCache).forEach(k => delete _oarCache[k]);
+  marker1.style.setProperty('--boat-x', '0px');
   marker1.style.setProperty('--steer-y', '0px');
   marker1.style.setProperty('--steer-angle', '0deg');
-  marker2.style.left = "0%";
+  marker2.style.setProperty('--boat-x', '0px');
   marker2.style.setProperty('--steer-y', '0px');
   marker2.style.setProperty('--steer-angle', '0deg');
   renderOarStroke(marker1, 0);
@@ -1356,6 +1441,12 @@ function resetRaceState() {
   document.getElementById("t1-rate").textContent = "0 spm";
   document.getElementById("t2-rate").textContent = "0 spm";
   resultsBtn.style.display = "none";
+  const raceClockEl = document.getElementById("raceClock");
+  if (raceClockEl) raceClockEl.textContent = "0:00.0";
+  const gapChipEl = document.getElementById("gapChip");
+  if (gapChipEl) { gapChipEl.textContent = "\u2014"; gapChipEl.dataset.leader = "0"; }
+  const liveBadgeReset = document.getElementById("liveBadge");
+  if (liveBadgeReset) liveBadgeReset.classList.remove("live");
   startBtn.disabled = false;
   stopBtn.disabled = true;
   stopBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
@@ -1423,13 +1514,15 @@ function togglePause() {
     rafId = requestAnimationFrame(tickRace);
     stopBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
   }
+  const lb = document.getElementById("liveBadge");
+  if (lb) lb.classList.toggle("live", simulation.running);
 }
 
 // Renders the oar stroke animation for a boat marker based on its stroke
 // phase (0-1, one full cycle = catch -> drive -> finish -> recovery).
 function spawnSplash(markerEl, trackEl) {
   const trackRect = trackEl.getBoundingClientRect();
-  const blades = markerEl.querySelectorAll(".oar-blade");
+  const blades = _getOarCache(markerEl).oarBlades;
   if (blades.length === 0) return;
   blades.forEach(blade => {
     const r = blade.getBoundingClientRect();
@@ -1450,8 +1543,23 @@ function spawnSplash(markerEl, trackEl) {
   });
 }
 
+const _oarCache = {};
+function _getOarCache(markerEl) {
+  const id = markerEl.id || 'm';
+  if (!_oarCache[id]) {
+    _oarCache[id] = {
+      oarGroups: [...markerEl.querySelectorAll(".oar-group")],
+      rowerDots: [...markerEl.querySelectorAll(".rower-dot")],
+      oarBlades: [...markerEl.querySelectorAll(".oar-blade")],
+      inner: markerEl.firstElementChild,
+    };
+  }
+  return _oarCache[id];
+}
+
 function renderOarStroke(markerEl, phase) {
-  const oarGroups = markerEl.querySelectorAll(".oar-group");
+  const cache = _getOarCache(markerEl);
+  const { oarGroups, rowerDots, inner } = cache;
   const drivePortion = 0.35;
   let sweepT, inWater;
   if (phase < drivePortion) {
@@ -1464,11 +1572,31 @@ function renderOarStroke(markerEl, phase) {
   }
   const angle = -35 + sweepT * 60;
 
-  oarGroups.forEach((g) => {
+  for (let i = 0; i < oarGroups.length; i++) {
+    const g = oarGroups[i];
     const side = Number(g.dataset.side);
     g.style.transform = `rotate(${side * angle}deg)`;
     g.classList.toggle("in-water", inWater);
-  });
+  }
+
+  // --- Hull dynamics: surge, pitch, sliding crew, swelling wake ---
+  if (inner) {
+    const surge = inWater
+      ? Math.sin(Math.PI * sweepT) * 1.8
+      : Math.sin(Math.PI * (1 - sweepT)) * -0.55;
+    const pitch = inWater ? -0.9 + sweepT * 1.7 : 0.7 * sweepT - 0.35;
+    inner.style.transform = `translate(${surge.toFixed(2)}px, 0px) rotate(${pitch.toFixed(2)}deg)`;
+  }
+  // Rowers roll toward the stern during the drive, recover forward
+  const slide = (-4.5 * sweepT).toFixed(2);
+  for (let i = 0; i < rowerDots.length; i++) {
+    rowerDots[i].setAttribute("transform", `translate(${slide} 0)`);
+  }
+  // Wake swells through the drive and lingers into the recovery
+  const wakeOp = 0.18 + 0.5 * (inWater ? Math.min(1, sweepT * 1.3) : sweepT * 0.55);
+  const wakeS = 0.75 + 0.35 * (1 - sweepT) * (inWater ? 0.5 : 1);
+  markerEl.style.setProperty("--wake-op", wakeOp.toFixed(3));
+  markerEl.style.setProperty("--wake-s", wakeS.toFixed(3));
 }
 
 function tickRace(now) {
@@ -1481,6 +1609,8 @@ function tickRace(now) {
 
   simulation.tick(realDt * SIM_SPEED);
   const s = simulation.getState();
+  const liveBadgeEl = document.getElementById("liveBadge");
+  if (liveBadgeEl) liveBadgeEl.classList.add("live");
 
   renderOarStroke(marker1, s.boat1.strokePhase);
   renderOarStroke(marker2, s.boat2.strokePhase);
@@ -1567,7 +1697,7 @@ function tickRace(now) {
       ));
     }
 
-    // 2. Victory call — must be checked BEFORE any other event so nothing fires after finish
+    // 2. Victory call -- must be checked BEFORE any other event so nothing fires after finish
     if (!commentary._commentedVictory) {
       const justFinished1 = b1.finishSimTime !== null && !commentary._prevFinish1;
       const justFinished2 = b2.finishSimTime !== null && !commentary._prevFinish2;
@@ -2198,6 +2328,14 @@ function showRaceSummaryPopup() {
       <button class="rs-close-btn"><i class="fa-solid fa-xmark"></i> Close</button>
     </div>`;
   document.body.appendChild(overlay);
+  const rsCols = overlay.querySelectorAll(".rs-result-col");
+  const winCol = rsCols[winner === "boat1" ? 0 : 1];
+  if (winCol) winCol.classList.add("rs-win");
+  if (typeof window.fxConfetti === "function") {
+    window.fxConfetti(winner === "boat1"
+      ? ["#38d1ff", "#9feaff", "#f7c948", "#ffffff"]
+      : ["#ff5470", "#ffb1c0", "#f7c948", "#ffffff"]);
+  }
 
   // Render power graph
   const canvas = document.getElementById("popupPowerGraph");
@@ -2209,16 +2347,16 @@ function showRaceSummaryPopup() {
       type: "scatter",
       data: {
         datasets: [
-          { label: commentary.short("boat1"), data: d1, borderColor: "#1e88e5", backgroundColor: "rgba(30,136,229,0.15)", pointRadius: 0, borderWidth: 2, showLine: true, tension: 0.2 },
-          { label: commentary.short("boat2"), data: d2, borderColor: "#e53935", backgroundColor: "rgba(229,57,53,0.15)", pointRadius: 0, borderWidth: 2, showLine: true, tension: 0.2 }
+          { label: commentary.short("boat1"), data: d1, borderColor: "#38d1ff", backgroundColor: "rgba(56,209,255,0.15)", pointRadius: 0, borderWidth: 2, showLine: true, tension: 0.2 },
+          { label: commentary.short("boat2"), data: d2, borderColor: "#ff5470", backgroundColor: "rgba(255,84,112,0.15)", pointRadius: 0, borderWidth: 2, showLine: true, tension: 0.2 }
         ]
       },
       options: {
         responsive: true,
-        plugins: { legend: { position: "top", labels: { boxWidth: 12, font: { size: 11 } } } },
+        plugins: { legend: { position: "top", labels: { boxWidth: 12, font: { size: 11, family: "'Space Grotesk', sans-serif" }, color: "#a9bdd4" } } },
         scales: {
-          x: { title: { display: true, text: "Distance (m)" }, min: 0, max: 1500 },
-          y: { title: { display: true, text: "Watts" }, beginAtZero: false }
+          x: { title: { display: true, text: "Distance (m)", color: "#71809a" }, min: 0, max: 1500, ticks: { color: "#71809a" }, grid: { color: "rgba(126,166,255,0.08)" } },
+          y: { title: { display: true, text: "Watts", color: "#71809a" }, beginAtZero: false, ticks: { color: "#71809a" }, grid: { color: "rgba(126,166,255,0.08)" } }
         }
       }
     });
@@ -2232,6 +2370,8 @@ function finishRace() {
   if (simulation) simulation.pause();
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   lastFrameTime = null;
+  const lb = document.getElementById("liveBadge");
+  if (lb) lb.classList.remove("live");
   stopBtn.disabled = true;
   stopBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
 
@@ -2331,6 +2471,8 @@ function confidenceLabel(prob) {
 function updateWinProbs() {
   const el = document.getElementById("winProbs");
   const probs = computeWinProbs();
+  const p1n = probs ? probs.prob1 : 50;
+  const p2n = probs ? probs.prob2 : 50;
   let marginHtml = "";
   if (probs) {
     const fav = probs.prob1 >= probs.prob2 ? "RP" : "TC";
@@ -2342,10 +2484,19 @@ function updateWinProbs() {
   const c1 = probs ? confidenceLabel(probs.prob1) : "--";
   const c2 = probs ? confidenceLabel(probs.prob2) : "--";
   el.innerHTML = `
-    <span class="wp-boat wp-boat1"><span class="wp-label">RP</span><span class="wp-pct">${p1}</span><span class="wp-conf">${c1}</span></span>
-    <span class="wp-vs">vs</span>
-    <span class="wp-boat wp-boat2"><span class="wp-label">TC</span><span class="wp-pct">${p2}</span><span class="wp-conf">${c2}</span></span>
-    ${marginHtml}
+    <div class="wp-block">
+      <div class="wp-bar">
+        <span class="wp-seg wp-seg-1" style="width:${p1n.toFixed(2)}%"></span>
+        <span class="wp-seg wp-seg-2" style="width:${p2n.toFixed(2)}%"></span>
+        <span class="wp-notch"></span>
+      </div>
+      <div class="wp-chips">
+        <span class="wp-boat wp-boat1"><span class="wp-label">RP</span><span class="wp-pct">${p1}</span><span class="wp-conf">${c1}</span></span>
+        <span class="wp-vs">vs</span>
+        <span class="wp-boat wp-boat2"><span class="wp-label">TC</span><span class="wp-pct">${p2}</span><span class="wp-conf">${c2}</span></span>
+        ${marginHtml}
+      </div>
+    </div>
   `;
 }
 
@@ -2370,21 +2521,47 @@ function formatSplitFromSec(secPer500) {
   return `${m}:${s}`;
 }
 
-function getBowFinishPct() {
+let _cachedFinishPct = 100;
+let _cachedTrackW = 0;
+function _updateFinishPct() {
   const trackEl = document.querySelector(".lane-track");
   const finishEl = document.querySelector(".finish-line");
-  if (!trackEl || !finishEl) return 100;
+  if (!trackEl || !finishEl) return;
+  _cachedTrackW = trackEl.offsetWidth;
   const trackRect = trackEl.getBoundingClientRect();
   const finishRect = finishEl.getBoundingClientRect();
   const trackWidth = trackRect.width;
-  if (trackWidth <= 0) return 100;
+  if (trackWidth <= 0) return;
   const bowOffset = ((100 - (-20)) / 140) * 92;
   const finishLeft = finishRect.left - trackRect.left;
-  return Math.min(100, Math.max(0, 100 * (finishLeft - bowOffset) / (trackWidth - 92)));
+  _cachedFinishPct = Math.min(100, Math.max(0, 100 * (finishLeft - bowOffset) / (trackWidth - 92)));
 }
+function getBowFinishPct() {
+  return _cachedFinishPct;
+}
+window.addEventListener("resize", _updateFinishPct);
+window.addEventListener("load", () => setTimeout(_updateFinishPct, 60));
+if (document.readyState !== "loading") setTimeout(_updateFinishPct, 60);
+else document.addEventListener("DOMContentLoaded", () => setTimeout(_updateFinishPct, 60));
 
 function updateDistanceSpeedDisplay(state) {
   if (!state) return;
+  const gapChip = document.getElementById("gapChip");
+  if (gapChip) {
+    if (!simulation || simulation.simTime <= 0.01) {
+      gapChip.textContent = "\u2014";
+      gapChip.dataset.leader = "0";
+    } else {
+      const diff = state.boat1.displayDistance - state.boat2.displayDistance;
+      if (Math.abs(diff) < 0.5) {
+        gapChip.textContent = "Dead level";
+        gapChip.dataset.leader = "0";
+      } else {
+        gapChip.textContent = (diff > 0 ? "RP +" : "TC +") + Math.abs(diff).toFixed(1) + " m";
+        gapChip.dataset.leader = diff > 0 ? "1" : "2";
+      }
+    }
+  }
   document.getElementById("t1-dist").textContent = Math.ceil(state.boat1.displayDistance) + " m";
   document.getElementById("t2-dist").textContent = Math.ceil(state.boat2.displayDistance) + " m";
   document.getElementById("t1-speed").textContent = state.boat1.speed.toFixed(2) + " m/s";
@@ -2394,21 +2571,28 @@ function updateDistanceSpeedDisplay(state) {
 function updateTimeDisplay(state) {
   if (!state) return;
   const dt = state.displayTime;
+  const raceClockNode = document.getElementById("raceClock");
+  if (raceClockNode) raceClockNode.textContent = formatRealTime(dt);
   document.getElementById("t1-time").textContent = formatRealTime(state.boat1.finishDisplayTime !== null ? state.boat1.finishDisplayTime : dt);
   document.getElementById("t2-time").textContent = formatRealTime(state.boat2.finishDisplayTime !== null ? state.boat2.finishDisplayTime : dt);
   document.getElementById("t1-rate").textContent = (state.boat1.strokeRate || 0) + " spm";
   document.getElementById("t2-rate").textContent = (state.boat2.strokeRate || 0) + " spm";
-  document.getElementById("t1-steer").textContent = ((state.boat1.headingAngle || 0) * (180 / Math.PI)).toFixed(1) + "°";
-  document.getElementById("t2-steer").textContent = ((state.boat2.headingAngle || 0) * (180 / Math.PI)).toFixed(1) + "°";
+  const _hdg1 = ((state.boat1.headingAngle || 0) * (180 / Math.PI)).toFixed(1);
+  const _hdg2 = ((state.boat2.headingAngle || 0) * (180 / Math.PI)).toFixed(1);
+  document.getElementById("t1-steer").innerHTML = `${_hdg1}<i class="fa-solid fa-arrow-up steer-needle" style="transform:rotate(${_hdg1}deg)"></i>`;
+  document.getElementById("t2-steer").innerHTML = `${_hdg2}<i class="fa-solid fa-arrow-up steer-needle" style="transform:rotate(${_hdg2}deg)"></i>`;
 }
 
 function updateCourseMarkers(state) {
   const finishPct = getBowFinishPct();
   const pct1 = Math.min(100, (state.boat1.distance / 750) * finishPct);
   const pct2 = Math.min(100, (state.boat2.distance / 750) * finishPct);
-  const boatWidthPx = 92;
-  marker1.style.left = `calc(${pct1}% - ${(pct1 / 100) * boatWidthPx}px)`;
-  marker2.style.left = `calc(${pct2}% - ${(pct2 / 100) * boatWidthPx}px)`;
+  const trackW = _cachedTrackW;
+  if (trackW > 0) {
+    const boatWidthPx = 92;
+    marker1.style.setProperty('--boat-x', `${(pct1 / 100) * (trackW - boatWidthPx)}px`);
+    marker2.style.setProperty('--boat-x', `${(pct2 / 100) * (trackW - boatWidthPx)}px`);
+  }
   const yOffset1 = ((state.boat1.centerY || 0) * 8);
   const yOffset2 = ((state.boat2.centerY || 0) * 8);
   marker1.style.setProperty('--steer-y', `${yOffset1.toFixed(1)}px`);
@@ -2469,7 +2653,29 @@ function updateChart(state) {
 
 // ---------- Event wiring ----------
 
-startBtn.addEventListener("click", startRace);
+startBtn.addEventListener("click", () => {
+  if (window._raceCountdownRunning) return;
+  if (crewSize("boat1") === 0 && crewSize("boat2") === 0) {
+    showAlertPopup("Assign at least one rower to a boat before starting the race.");
+    return;
+  }
+  if (crewSize("boat1") > 0 && !boatCoxswains.boat1) {
+    showAlertPopup("Richard Paul needs a coxswain before the race can start.");
+    return;
+  }
+  if (crewSize("boat2") > 0 && !boatCoxswains.boat2) {
+    showAlertPopup("The Challenger needs a coxswain before the race can start.");
+    return;
+  }
+  window._raceCountdownRunning = true;
+  startBtn.disabled = true;
+  const go = () => {
+    window._raceCountdownRunning = false;
+    startRace();
+  };
+  if (typeof window.fxCountdown === "function") window.fxCountdown(go);
+  else go();
+});
 stopBtn.addEventListener("click", togglePause);
 resetBtn.addEventListener("click", resetRaceState);
 resultsBtn.addEventListener("click", () => showRaceSummaryPopup());
@@ -2568,7 +2774,7 @@ function showHallOfFamePopup() {
     decAwards.push(`${a.year} ${a.award}`);
   });
   if (decRower.captain) decAwards.push("Team Captain");
-  const awardsDetail = decAwards.join(" · ") || "—";
+  const awardsDetail = decAwards.join(' <i class="fa-solid fa-circle dot-sep"></i> ') || '<i class="fa-solid fa-minus hof-none"></i>';
 
   overlay.innerHTML = `
     <div class="hof-card">
@@ -2577,7 +2783,7 @@ function showHallOfFamePopup() {
       <div class="hof-header">
         <div class="hof-header-icon"><i class="fa-solid fa-trophy"></i></div>
         <div class="hof-title">Hall of Fame</div>
-        <div class="hof-sub hof-sub-years">(2025 — Present)</div>
+        <div class="hof-sub hof-sub-years">(2025 <i class="fa-solid fa-arrow-right-long hof-year-arrow"></i> Present)</div>
       </div>
       <div class="hof-grid">
         <div class="hof-category" style="--hof-delay:0.1s">
@@ -2592,7 +2798,7 @@ function showHallOfFamePopup() {
           <div class="hof-cat-label">Pound for Pound</div>
           <div class="hof-cat-name">${data.poundForPound.rower.name}</div>
           <div class="hof-cat-value">${data.poundForPound.ratio.toFixed(2)} Power/Weight</div>
-          <div class="hof-cat-detail">${data.poundForPound.rower.weight} lbs · ${data.poundForPound.rower.twoK}</div>
+          <div class="hof-cat-detail">${data.poundForPound.rower.weight} lbs <i class="fa-solid fa-circle dot-sep"></i> ${data.poundForPound.rower.twoK}</div>
         </div>
         <div class="hof-category" style="--hof-delay:0.3s">
           <div class="hof-cat-icon"><i class="fa-solid fa-crown"></i></div>
@@ -2606,7 +2812,7 @@ function showHallOfFamePopup() {
           <div class="hof-cat-label">Greatest Boat</div>
           <div class="hof-cat-name">${data.greatestBoat.lineup.name} (${data.greatestBoat.lineup.year})</div>
           <div class="hof-cat-value">${data.greatestBoat.ovr} OVR</div>
-          <div class="hof-cat-detail">${data.greatestBoat.lineup.rowers.join(" · ")}</div>
+          <div class="hof-cat-detail">${data.greatestBoat.lineup.rowers.join(' <i class="fa-solid fa-circle dot-sep"></i> ')}</div>
         </div>
       </div>
     </div>
@@ -2622,7 +2828,7 @@ function showHallOfFamePopup() {
 // ---------- Init ----------
 
 function seedDefaultBoats() {
-  // Put the first 8 rowers (by 2k speed) in boat1, next 8 in boat2 as a starting example
+  // Showcase state: strongest 8 in boat1, next 8 in boat2, coxswains paired up.
   const seatCount = Math.min(SEATS_PER_BOAT, rowers.length);
   for (let i = 0; i < seatCount; i++) {
     boats.boat1[i] = rowers[i].id;
@@ -2631,16 +2837,22 @@ function seedDefaultBoats() {
   for (let i = 0; i < boat2Count; i++) {
     boats.boat2[i] = rowers[SEATS_PER_BOAT + i].id;
   }
+  if (coxswains.length > 0 && !boatCoxswains.boat1) {
+    boatCoxswains.boat1 = (coxswains.find(c => (c.name || "").includes("James Millward")) || coxswains[coxswains.length - 1]).id;
+  }
+  if (coxswains.length > 1 && !boatCoxswains.boat2) {
+    boatCoxswains.boat2 = (coxswains.find(c => (c.name || "").includes("Alexander Tran")) || coxswains[0]).id;
+  }
 }
 
 function init() {
   loadRowers();
   loadLineups();
   loadCoxswains();
+  seedDefaultBoats();
   renderAll();
   initChart();
   resetRaceState();
 }
 
 init();
-

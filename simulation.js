@@ -124,12 +124,12 @@ class RaceSimulation {
       const angle = startAngle - i * range / (points - 1);
       const t = i / (points - 1);
       const skewed = Math.pow(t, skewBase);
-      // phase distortion — shifts power timing, creates unevenness
+      // phase distortion -- shifts power timing, creates unevenness
       const phaseWarp = bad * (0.12 * Math.sin(t * 7.3 + s1) + 0.06 * Math.sin(t * 15.1 + s2));
       const warped = skewed + phaseWarp;
-      // amplitude modulation — multi-frequency troughs & peaks
+      // amplitude modulation -- multi-frequency troughs & peaks
       const ampMod = 1 - bad * 0.55 + bad * 0.55 * (0.6 * Math.sin(t * 8.7 + s3) + 0.4 * Math.sin(t * 18.3 + s1 * 2));
-      // plateau — power stalls then jumps
+      // plateau -- power stalls then jumps
       const platCenter = 0.25 + Math.sin(s2) * 0.2;
       const platWidth = 0.08 + bad * 0.12;
       const platDepth = bad * 0.7;
